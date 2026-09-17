@@ -123,19 +123,6 @@ class AuditLogRead(BaseModel):
     timestamp: datetime
 
 
-class NotificationRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    title: str
-    message: str
-    severity: str
-    target_department: str | None = None
-    channel: str
-    is_read: bool
-    created_at: datetime
-
-
 # Simulations & AI
 class SimulationScenarioCreate(BaseModel):
     name: str = Field(..., min_length=3, max_length=150)

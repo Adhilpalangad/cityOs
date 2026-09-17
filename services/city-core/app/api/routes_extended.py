@@ -13,7 +13,6 @@ from app.db.models import (
     Hospital,
     Incident,
     KnowledgeDocument,
-    Notification,
     PowerSubstation,
     Road,
     SimulationScenario,
@@ -30,7 +29,6 @@ from app.schemas.domains import (
     CitizenComplaintRead,
     EnvironmentReadingRead,
     KnowledgeDocumentRead,
-    NotificationRead,
     PowerSubstationRead,
     SimulationScenarioCreate,
     SimulationScenarioRead,
@@ -389,41 +387,11 @@ async def list_audit_logs(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.get("/api/v1/notifications", response_model=list[NotificationRead])
-async def list_notifications(db: AsyncSession = Depends(get_db)):
-    stmt = select(Notification).order_by(Notification.created_at.desc()).limit(20)
-    notifs = (await db.scalars(stmt)).all()
-    if not notifs:
-        n1 = Notification(
-            title="Critical Flood Risk in Zone 4",
-            message="Heavy rainfall detected. Flood risk updated to HIGH on Road 1024.",
-            severity="CRITICAL",
-            target_department="EMERGENCY",
-            channel="IN_APP",
-        )
-        n2 = Notification(
-            title="Hospital ICU Capacity Alert",
-            message="City Hospital South ICU occupancy exceeded 85%.",
-            severity="WARNING",
-            target_department="HEALTHCARE",
-            channel="IN_APP",
-        )
-        db.add_all([n1, n2])
-        await db.commit()
-        notifs = [n1, n2]
-    return [
-        NotificationRead(
-            id=str(n.id),
-            title=n.title,
-            message=n.message,
-            severity=n.severity,
-            target_department=n.target_department,
-            channel=n.channel,
-            is_read=n.is_read,
-            created_at=n.created_at,
-        )
-        for n in notifs
-    ]
+# Notifications: see app/api/routes_notifications.py for the CRUD surface
+# and app/services/notifications.py for the trigger rules that create them
+# automatically (wired into routes_incidents.py, routes_roads.py, and
+# routes_hospitals.py) -- moved out once it became a real engine instead of
+# a GET-only, self-seeding stub.
 
 
 # -----------------------------------------------------------------------------

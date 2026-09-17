@@ -20,6 +20,7 @@ from app.schemas.incidents import (
 )
 from app.services import audit
 from app.services.incidents import generate_incident_number, require_status, validate_transition
+from app.services.notifications import notify
 
 router = APIRouter(prefix="/api/v1/incidents", tags=["incidents"])
 
@@ -136,6 +137,18 @@ async def create_incident(
         status="DETECTED",
     )
     db.add(incident)
+
+    # Spec section 48's own first trigger rule: a critical incident notifies
+    # emergency control the moment it's detected, not on some later review.
+    if incident.severity == "CRITICAL":
+        notify(
+            db,
+            title=f"Critical incident: {incident.incident_number}",
+            message=incident.description or f"{incident.incident_type} reported as CRITICAL.",
+            severity="CRITICAL",
+            target_department=incident.department_code or "EMERGENCY",
+        )
+
     await db.commit()
     return _to_read(incident)
 

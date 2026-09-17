@@ -33,6 +33,8 @@ WORKFLOW_PRIORITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
 WORKFLOW_STATUSES = ("PENDING", "IN_PROGRESS", "ESCALATED", "COMPLETED", "REJECTED")
 ASSET_CONDITIONS = ("EXCELLENT", "GOOD", "FAIR", "POOR", "CRITICAL")
 PROJECT_STATUSES = ("PLANNED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELLED")
+NOTIFICATION_SEVERITIES = ("INFO", "WARNING", "CRITICAL")
+NOTIFICATION_CHANNELS = ("IN_APP", "EMAIL", "SMS", "PUSH")
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -395,6 +397,13 @@ class Notification(Base):
     is_read: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now()
+    )
+
+    __table_args__ = (
+        sa.CheckConstraint(
+            f"severity IN {NOTIFICATION_SEVERITIES}", name="ck_notifications_severity"
+        ),
+        sa.CheckConstraint(f"channel IN {NOTIFICATION_CHANNELS}", name="ck_notifications_channel"),
     )
 
 

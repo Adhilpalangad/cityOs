@@ -11,6 +11,7 @@ from app.db.models import Road
 from app.schemas.common import PageMeta
 from app.schemas.roads import RoadCreate, RoadListResponse, RoadRead, RoadUpdate
 from app.services import audit
+from app.services.notifications import notify
 
 router = APIRouter(prefix="/api/v1/roads", tags=["roads"])
 
@@ -138,6 +139,17 @@ async def update_road(
             department_code=user.department,
             reason=reason,
         )
+        # Spec section 48's own trigger rule (the "road closure" example,
+        # narrowed to what this codebase can actually determine -- there's
+        # no citizen/zone model yet to know who's affected).
+        if data["status"] == "CLOSED":
+            notify(
+                db,
+                title=f"Road closed: {road.name}",
+                message=reason or f"{road.code} ({road.name}) has been closed.",
+                severity="WARNING",
+                target_department=user.department or "TRAFFIC",
+            )
 
     await db.commit()
     return _to_read(road)
