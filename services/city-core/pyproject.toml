@@ -46,4 +46,11 @@ select = ["E", "F", "I", "UP", "B", "ASYNC"]
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
   "fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body", "fastapi.Header",
+  # app.api.deps.require_permission is itself a dependency factory (returns
+  # a new async function each call, deterministic given its permission-code
+  # argument, no shared mutable state) -- same shape as Depends/Query/etc.,
+  # so it gets the same allowance when used directly as a parameter default
+  # (`user: CurrentUser = Depends(require_permission("x.y"))`), not just
+  # inside a route decorator's `dependencies=[...]` list.
+  "app.api.deps.require_permission",
 ]

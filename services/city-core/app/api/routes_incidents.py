@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, require_permission
+from app.api.deps import CurrentUser, get_db, require_permission
 from app.core.errors import AppError
 from app.db.models import Incident
 from app.schemas.common import PageMeta
@@ -18,6 +18,7 @@ from app.schemas.incidents import (
     IncidentStatusUpdate,
     IncidentUpdate,
 )
+from app.services import audit
 from app.services.incidents import generate_incident_number, require_status, validate_transition
 
 router = APIRouter(prefix="/api/v1/incidents", tags=["incidents"])
@@ -154,44 +155,57 @@ async def update_incident(
     return _to_read(incident)
 
 
-@router.patch(
-    "/{incident_id}/status",
-    response_model=IncidentRead,
-    dependencies=[Depends(require_permission("incident.update"))],
-)
+@router.patch("/{incident_id}/status", response_model=IncidentRead)
 async def update_incident_status(
-    incident_id: uuid.UUID, payload: IncidentStatusUpdate, db: AsyncSession = Depends(get_db)
+    incident_id: uuid.UUID,
+    payload: IncidentStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_permission("incident.update")),
 ) -> IncidentRead:
     incident = await _load_or_404(db, incident_id)
     validate_transition(incident.status, payload.status)
+    previous_status = incident.status
     incident.status = payload.status
+    audit.record(
+        db,
+        actor=user.email,
+        action=f"INCIDENT_STATUS_CHANGED_{previous_status}_TO_{payload.status}",
+        target_resource=incident.incident_number,
+        department_code=incident.department_code or user.department,
+        reason=payload.reason,
+    )
     await db.commit()
     return _to_read(incident)
 
 
-@router.post(
-    "/{incident_id}/assign",
-    response_model=IncidentRead,
-    dependencies=[Depends(require_permission("incident.assign"))],
-)
+@router.post("/{incident_id}/assign", response_model=IncidentRead)
 async def assign_incident(
-    incident_id: uuid.UUID, payload: IncidentAssign, db: AsyncSession = Depends(get_db)
+    incident_id: uuid.UUID,
+    payload: IncidentAssign,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_permission("incident.assign")),
 ) -> IncidentRead:
     incident = await _load_or_404(db, incident_id)
     require_status(incident.status, "VERIFIED", "assign")
     incident.assigned_to = payload.assigned_to
     incident.status = "ASSIGNED"
+    audit.record(
+        db,
+        actor=user.email,
+        action=f"INCIDENT_ASSIGNED_TO_{payload.assigned_to}",
+        target_resource=incident.incident_number,
+        department_code=incident.department_code or user.department,
+        reason=payload.reason,
+    )
     await db.commit()
     return _to_read(incident)
 
 
-@router.post(
-    "/{incident_id}/resolve",
-    response_model=IncidentRead,
-    dependencies=[Depends(require_permission("incident.resolve"))],
-)
+@router.post("/{incident_id}/resolve", response_model=IncidentRead)
 async def resolve_incident(
-    incident_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+    incident_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_permission("incident.resolve")),
 ) -> IncidentRead:
     incident = await _load_or_404(db, incident_id)
     require_status(incident.status, "RESPONDING", "resolve")
@@ -202,6 +216,13 @@ async def resolve_incident(
     if created_at.tzinfo is None:
         created_at = created_at.replace(tzinfo=UTC)
     incident.response_time_seconds = int((now - created_at).total_seconds())
+    audit.record(
+        db,
+        actor=user.email,
+        action="INCIDENT_RESOLVED",
+        target_resource=incident.incident_number,
+        department_code=incident.department_code or user.department,
+    )
     await db.commit()
     return _to_read(incident)
 

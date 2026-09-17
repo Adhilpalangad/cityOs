@@ -70,6 +70,7 @@ class IncidentUpdate(BaseModel):
 
 class IncidentStatusUpdate(BaseModel):
     status: str
+    reason: str | None = None
 
     @field_validator("status")
     @classmethod
@@ -81,3 +82,4 @@ class IncidentStatusUpdate(BaseModel):
 
 class IncidentAssign(BaseModel):
     assigned_to: str
+    reason: str | None = None

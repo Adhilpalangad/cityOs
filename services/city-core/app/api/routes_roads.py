@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, require_permission
+from app.api.deps import CurrentUser, get_db, require_permission
 from app.core.errors import AppError
 from app.db.models import Road
 from app.schemas.common import PageMeta
 from app.schemas.roads import RoadCreate, RoadListResponse, RoadRead, RoadUpdate
+from app.services import audit
 
 router = APIRouter(prefix="/api/v1/roads", tags=["roads"])
 
@@ -107,18 +108,37 @@ async def create_road(payload: RoadCreate, db: AsyncSession = Depends(get_db)) -
     return _to_read(road)
 
 
-@router.patch(
-    "/{road_id}", response_model=RoadRead, dependencies=[Depends(require_permission("road.update"))]
-)
+@router.patch("/{road_id}", response_model=RoadRead)
 async def update_road(
-    road_id: uuid.UUID, payload: RoadUpdate, db: AsyncSession = Depends(get_db)
+    road_id: uuid.UUID,
+    payload: RoadUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_permission("road.update")),
 ) -> RoadRead:
     road = await _load_or_404(db, road_id)
     data = payload.model_dump(exclude_unset=True)
+    reason = data.pop("reason", None)
     if "waypoints" in data and data["waypoints"] is not None:
         data["waypoints"] = [list(point) for point in data["waypoints"]]
+
+    previous_status = road.status
     for field, value in data.items():
         setattr(road, field, value)
+
+    # A status change is the sensitive part of a road update (spec section
+    # 50's own worked example is exactly this: closing a road, with a
+    # reason). A name/capacity edit isn't audited -- only an actual
+    # operational status change.
+    if "status" in data and data["status"] != previous_status:
+        audit.record(
+            db,
+            actor=user.email,
+            action=f"ROAD_STATUS_CHANGED_{previous_status}_TO_{data['status']}",
+            target_resource=road.code,
+            department_code=user.department,
+            reason=reason,
+        )
+
     await db.commit()
     return _to_read(road)
 
