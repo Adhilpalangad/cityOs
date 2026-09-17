@@ -22,7 +22,6 @@ from app.db.models import (
     TransitRoute,
     Vehicle,
     WaterZone,
-    WorkflowTask,
 )
 from app.schemas.domains import (
     AIAnalysisRequest,
@@ -41,7 +40,6 @@ from app.schemas.domains import (
     SimulationScenarioRead,
     TransitRouteRead,
     WaterZoneRead,
-    WorkflowTaskRead,
 )
 
 router = APIRouter()
@@ -362,7 +360,7 @@ async def list_city_projects(db: AsyncSession = Depends(get_db)):
 
 
 # -----------------------------------------------------------------------------
-# Citizen Complaints & Workflows
+# Citizen Complaints
 # -----------------------------------------------------------------------------
 @router.get("/api/v1/complaints", response_model=list[CitizenComplaintRead])
 async def list_complaints(db: AsyncSession = Depends(get_db)):
@@ -436,44 +434,9 @@ async def create_complaint(body: CitizenComplaintCreate, db: AsyncSession = Depe
     )
 
 
-@router.get("/api/v1/workflows", response_model=list[WorkflowTaskRead])
-async def list_workflow_tasks(db: AsyncSession = Depends(get_db)):
-    stmt = select(WorkflowTask).order_by(WorkflowTask.created_at.desc())
-    tasks = (await db.scalars(stmt)).all()
-    if not tasks:
-        t1 = WorkflowTask(
-            task_number="TSK-102",
-            title="Emergency Drainage Clearing Approval",
-            department_code="INFRASTRUCTURE",
-            assigned_to="Officer Smith",
-            priority="HIGH",
-            status="PENDING",
-        )
-        t2 = WorkflowTask(
-            task_number="TSK-105",
-            title="Ambulance Fleet Re-allocation",
-            department_code="EMERGENCY",
-            assigned_to="Dispatcher Davis",
-            priority="CRITICAL",
-            status="IN_PROGRESS",
-        )
-        db.add_all([t1, t2])
-        await db.commit()
-        tasks = [t1, t2]
-    return [
-        WorkflowTaskRead(
-            id=str(t.id),
-            task_number=t.task_number,
-            title=t.title,
-            department_code=t.department_code,
-            assigned_to=t.assigned_to,
-            priority=t.priority,
-            status=t.status,
-            sla_deadline=t.sla_deadline,
-            created_at=t.created_at,
-        )
-        for t in tasks
-    ]
+# Workflow tasks: see app/api/routes_workflows.py -- moved out of this file
+# once they got a real create/assign/status-transition API instead of a
+# GET-only, self-seeding stub.
 
 
 # -----------------------------------------------------------------------------

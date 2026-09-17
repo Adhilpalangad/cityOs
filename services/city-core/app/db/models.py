@@ -28,6 +28,9 @@ INCIDENT_SEVERITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
 # Lifecycle order from spec section 16. See app/services/incidents.py for
 # the allowed-transition map that enforces this at the API layer.
 INCIDENT_STATUSES = ("DETECTED", "VERIFIED", "ASSIGNED", "RESPONDING", "RESOLVED", "ANALYZED")
+WORKFLOW_PRIORITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
+# See app/services/workflows.py for the allowed-transition map this enforces.
+WORKFLOW_STATUSES = ("PENDING", "IN_PROGRESS", "ESCALATED", "COMPLETED", "REJECTED")
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -342,6 +345,11 @@ class WorkflowTask(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        sa.CheckConstraint(f"priority IN {WORKFLOW_PRIORITIES}", name="ck_workflow_tasks_priority"),
+        sa.CheckConstraint(f"status IN {WORKFLOW_STATUSES}", name="ck_workflow_tasks_status"),
     )
 
 

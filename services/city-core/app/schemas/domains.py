@@ -141,20 +141,6 @@ class CitizenComplaintRead(BaseModel):
     created_at: datetime
 
 
-class WorkflowTaskRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    task_number: str
-    title: str
-    department_code: str
-    assigned_to: str | None = None
-    priority: str
-    status: str
-    sla_deadline: datetime | None = None
-    created_at: datetime
-
-
 # Audit & Notifications
 class AuditLogRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)

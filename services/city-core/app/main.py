@@ -13,6 +13,7 @@ from app.api.routes_live import run_consumer
 from app.api.routes_roads import router as roads_router
 from app.api.routes_system import router as system_router
 from app.api.routes_vehicles import router as vehicles_router
+from app.api.routes_workflows import router as workflows_router
 from app.core.config import get_settings
 from app.core.errors import install_exception_handlers
 from app.core.logging import configure_logging
@@ -53,5 +54,6 @@ app.include_router(roads_router)
 app.include_router(hospitals_router)
 app.include_router(vehicles_router)
 app.include_router(incidents_router)
+app.include_router(workflows_router)
 app.include_router(extended_router)
 app.include_router(live_router)
