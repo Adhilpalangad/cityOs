@@ -14,8 +14,6 @@ from sqlalchemy import select
 
 from app.db.base import SessionLocal
 from app.db.models import (
-    AuditLog,
-    BusStop,
     CitizenComplaint,
     CityProject,
     EnvironmentReading,
@@ -26,8 +24,6 @@ from app.db.models import (
     Notification,
     PowerSubstation,
     Road,
-    SimulationScenario,
-    TransitRoute,
     Vehicle,
     WaterZone,
     WorkflowTask,

@@ -1,13 +1,10 @@
-import math
 import uuid
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, require_permission
-from app.core.errors import AppError
+from app.api.deps import get_db
 from app.db.models import (
     AuditLog,
     BusStop,
@@ -27,7 +24,6 @@ from app.db.models import (
     WaterZone,
     WorkflowTask,
 )
-from app.schemas.common import PageMeta
 from app.schemas.domains import (
     AIAnalysisRequest,
     AIAnalysisResponse,
@@ -43,7 +39,6 @@ from app.schemas.domains import (
     PowerSubstationRead,
     SimulationScenarioCreate,
     SimulationScenarioRead,
-    TransitRouteListResponse,
     TransitRouteRead,
     WaterZoneRead,
     WorkflowTaskRead,
@@ -510,16 +505,16 @@ async def list_audit_logs(db: AsyncSession = Depends(get_db)):
         logs = [a1, a2]
     return [
         AuditLogRead(
-            id=str(l.id),
-            actor=l.actor,
-            action=l.action,
-            target_resource=l.target_resource,
-            department_code=l.department_code,
-            reason=l.reason,
-            approved_by=l.approved_by,
-            timestamp=l.timestamp,
+            id=str(log.id),
+            actor=log.actor,
+            action=log.action,
+            target_resource=log.target_resource,
+            department_code=log.department_code,
+            reason=log.reason,
+            approved_by=log.approved_by,
+            timestamp=log.timestamp,
         )
-        for l in logs
+        for log in logs
     ]
 
 
@@ -643,9 +638,11 @@ async def create_simulation(body: SimulationScenarioCreate, db: AsyncSession = D
 # -----------------------------------------------------------------------------
 @router.post("/api/v1/ai/analyze", response_model=AIAnalysisResponse)
 async def analyze_city_state(body: AIAnalysisRequest):
-    query_lower = body.query.lower()
     return AIAnalysisResponse(
-        summary=f"AI Supervisor evaluation for query: '{body.query}'. Detected active correlations across Traffic, Healthcare, and Emergency response metrics.",
+        summary=(
+            f"AI Supervisor evaluation for query: '{body.query}'. Detected active "
+            "correlations across Traffic, Healthcare, and Emergency response metrics."
+        ),
         risks_detected=[
             "Cascading Traffic Congestion on Arterial Corridors",
             "Elevated Emergency Response Times (+4.2 mins average)",
@@ -679,7 +676,10 @@ async def list_knowledge_documents(db: AsyncSession = Depends(get_db)):
             doc_code="KNOW-DOC-01",
             title="Monsoon Emergency Management Standard Operating Procedure",
             category="EMERGENCY_SOP",
-            content="During heavy rainfall events (>30mm/hr), emergency response units must auto-deploy to pre-designated low-elevation staging posts.",
+            content=(
+                "During heavy rainfall events (>30mm/hr), emergency response units must "
+                "auto-deploy to pre-designated low-elevation staging posts."
+            ),
             tags=["Emergency", "Monsoon", "SOP"],
             vector_id="vec-monsoon-sop-01",
         )
@@ -687,7 +687,10 @@ async def list_knowledge_documents(db: AsyncSession = Depends(get_db)):
             doc_code="KNOW-DOC-02",
             title="Urban Transit Priority & Signal Preemption Guidelines",
             category="TRAFFIC_POLICY",
-            content="Ambulances and rapid transit buses are granted priority traffic signal preemption on primary arterial corridors.",
+            content=(
+                "Ambulances and rapid transit buses are granted priority traffic signal "
+                "preemption on primary arterial corridors."
+            ),
             tags=["Traffic", "Transit", "Priority"],
             vector_id="vec-traffic-policy-02",
         )
