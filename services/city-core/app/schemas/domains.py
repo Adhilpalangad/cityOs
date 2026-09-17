@@ -81,34 +81,6 @@ class EnvironmentReadingRead(BaseModel):
     recorded_at: datetime
 
 
-# Complaints
-class CitizenComplaintCreate(BaseModel):
-    title: str = Field(..., min_length=3, max_length=150)
-    description: str = Field(..., min_length=5)
-    category: str = Field(default="General")
-    latitude: float | None = None
-    longitude: float | None = None
-    image_url: str | None = None
-    reporter_email: str | None = None
-
-
-class CitizenComplaintRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    complaint_number: str
-    title: str
-    description: str
-    category: str
-    latitude: float | None = None
-    longitude: float | None = None
-    image_url: str | None = None
-    status: str
-    reporter_email: str | None = None
-    department_code: str | None = None
-    created_at: datetime
-
-
 # Audit & Notifications
 class AuditLogRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)

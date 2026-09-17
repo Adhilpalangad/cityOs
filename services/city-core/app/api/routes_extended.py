@@ -8,7 +8,6 @@ from app.api.deps import get_db, require_permission
 from app.db.models import (
     AuditLog,
     BusStop,
-    CitizenComplaint,
     EnvironmentReading,
     Hospital,
     Incident,
@@ -25,8 +24,6 @@ from app.schemas.domains import (
     AIAnalysisResponse,
     AuditLogRead,
     BusStopRead,
-    CitizenComplaintCreate,
-    CitizenComplaintRead,
     EnvironmentReadingRead,
     KnowledgeDocumentRead,
     PowerSubstationRead,
@@ -285,89 +282,9 @@ async def get_environment_readings(db: AsyncSession = Depends(get_db)):
 # GET-only, self-seeding stub.
 
 
-# -----------------------------------------------------------------------------
-# Citizen Complaints
-# -----------------------------------------------------------------------------
-@router.get(
-    "/api/v1/complaints",
-    response_model=list[CitizenComplaintRead],
-    dependencies=[Depends(require_permission("complaint.read"))],
-)
-async def list_complaints(db: AsyncSession = Depends(get_db)):
-    stmt = select(CitizenComplaint).order_by(CitizenComplaint.created_at.desc())
-    complaints = (await db.scalars(stmt)).all()
-    if not complaints:
-        c1 = CitizenComplaint(
-            complaint_number="CMP-9041",
-            title="Pothole near Hospital Gate",
-            description="Deep pothole causing severe traffic slowdown on Road 1024.",
-            category="Infrastructure",
-            latitude=9.9850,
-            longitude=76.3050,
-            image_url="https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600",
-            status="SUBMITTED",
-            reporter_email="citizen@example.com",
-            department_code="INFRASTRUCTURE",
-        )
-        db.add(c1)
-        await db.commit()
-        complaints = [c1]
-    return [
-        CitizenComplaintRead(
-            id=str(c.id),
-            complaint_number=c.complaint_number,
-            title=c.title,
-            description=c.description,
-            category=c.category,
-            latitude=c.latitude,
-            longitude=c.longitude,
-            image_url=c.image_url,
-            status=c.status,
-            reporter_email=c.reporter_email,
-            department_code=c.department_code,
-            created_at=c.created_at,
-        )
-        for c in complaints
-    ]
-
-
-@router.post(
-    "/api/v1/complaints",
-    response_model=CitizenComplaintRead,
-    dependencies=[Depends(require_permission("complaint.create"))],
-)
-async def create_complaint(body: CitizenComplaintCreate, db: AsyncSession = Depends(get_db)):
-    num = f"CMP-{uuid.uuid4().hex[:6].upper()}"
-    complaint = CitizenComplaint(
-        complaint_number=num,
-        title=body.title,
-        description=body.description,
-        category=body.category,
-        latitude=body.latitude,
-        longitude=body.longitude,
-        image_url=body.image_url,
-        reporter_email=body.reporter_email,
-        department_code="CITIZEN_SERVICES",
-    )
-    db.add(complaint)
-    await db.commit()
-    await db.refresh(complaint)
-    return CitizenComplaintRead(
-        id=str(complaint.id),
-        complaint_number=complaint.complaint_number,
-        title=complaint.title,
-        description=complaint.description,
-        category=complaint.category,
-        latitude=complaint.latitude,
-        longitude=complaint.longitude,
-        image_url=complaint.image_url,
-        status=complaint.status,
-        reporter_email=complaint.reporter_email,
-        department_code=complaint.department_code,
-        created_at=complaint.created_at,
-    )
-
-
+# Citizen complaints: see app/api/routes_complaints.py -- moved out once
+# they got a real status-transition/assignment/resolution API instead of a
+# GET+POST-only stub.
 # Workflow tasks: see app/api/routes_workflows.py -- moved out of this file
 # once they got a real create/assign/status-transition API instead of a
 # GET-only, self-seeding stub.

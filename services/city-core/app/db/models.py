@@ -35,6 +35,8 @@ ASSET_CONDITIONS = ("EXCELLENT", "GOOD", "FAIR", "POOR", "CRITICAL")
 PROJECT_STATUSES = ("PLANNED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELLED")
 NOTIFICATION_SEVERITIES = ("INFO", "WARNING", "CRITICAL")
 NOTIFICATION_CHANNELS = ("IN_APP", "EMAIL", "SMS", "PUSH")
+# See app/services/complaints.py for the allowed-transition map this enforces.
+COMPLAINT_STATUSES = ("SUBMITTED", "IN_REVIEW", "ASSIGNED", "RESOLVED", "REJECTED")
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -343,6 +345,12 @@ class CitizenComplaint(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        sa.CheckConstraint(
+            f"status IN {COMPLAINT_STATUSES}", name="ck_citizen_complaints_status"
+        ),
     )
 
 

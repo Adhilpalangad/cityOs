@@ -62,7 +62,7 @@ def test_create_complaint_with_permission_succeeds(client) -> None:
         headers=auth_headers(["complaint.create"]),
         json={"title": "Pothole on Main St", "description": "Large pothole", "category": "ROADS"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
 
 
 def test_create_simulation_requires_authentication(client) -> None:

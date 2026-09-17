@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes_complaints import router as complaints_router
 from app.api.routes_extended import router as extended_router
 from app.api.routes_hospitals import router as hospitals_router
 from app.api.routes_incidents import router as incidents_router
@@ -63,5 +64,6 @@ app.include_router(infrastructure_router)
 app.include_router(projects_router)
 app.include_router(notifications_router)
 app.include_router(search_router)
+app.include_router(complaints_router)
 app.include_router(extended_router)
 app.include_router(live_router)
