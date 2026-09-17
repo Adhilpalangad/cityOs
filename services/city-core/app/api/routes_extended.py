@@ -9,7 +9,6 @@ from app.db.models import (
     AuditLog,
     BusStop,
     CitizenComplaint,
-    CityProject,
     EnvironmentReading,
     Hospital,
     Incident,
@@ -29,7 +28,6 @@ from app.schemas.domains import (
     BusStopRead,
     CitizenComplaintCreate,
     CitizenComplaintRead,
-    CityProjectRead,
     EnvironmentReadingRead,
     KnowledgeDocumentRead,
     NotificationRead,
@@ -263,52 +261,10 @@ async def get_environment_readings(db: AsyncSession = Depends(get_db)):
     ]
 
 
-# -----------------------------------------------------------------------------
-# Projects
-# -----------------------------------------------------------------------------
-# Infrastructure assets: see app/api/routes_infrastructure.py -- moved out
-# once they got real create/update endpoints instead of a GET-only,
-# self-seeding stub.
-@router.get("/api/v1/projects", response_model=list[CityProjectRead])
-async def list_city_projects(db: AsyncSession = Depends(get_db)):
-    stmt = select(CityProject).order_by(CityProject.project_code.asc())
-    projects = (await db.scalars(stmt)).all()
-    if not projects:
-        p1 = CityProject(
-            project_code="PRJ-2026-01",
-            name="Smart Flood Resilience Upgrade",
-            department_code="INFRASTRUCTURE",
-            budget=5000000.0,
-            spent=3120000.0,
-            status="IN_PROGRESS",
-            completion_percentage=68.0,
-        )
-        p2 = CityProject(
-            project_code="PRJ-2026-02",
-            name="Transit Fleet Electrification",
-            department_code="TRANSPORT",
-            budget=12000000.0,
-            spent=8900000.0,
-            status="IN_PROGRESS",
-            completion_percentage=74.0,
-        )
-        db.add_all([p1, p2])
-        await db.commit()
-        projects = [p1, p2]
-    return [
-        CityProjectRead(
-            id=str(p.id),
-            project_code=p.project_code,
-            name=p.name,
-            department_code=p.department_code,
-            budget=p.budget,
-            spent=p.spent,
-            status=p.status,
-            completion_percentage=p.completion_percentage,
-            created_at=p.created_at,
-        )
-        for p in projects
-    ]
+# Infrastructure assets: see app/api/routes_infrastructure.py.
+# City projects: see app/api/routes_projects.py.
+# Both moved out once they got real create/update endpoints instead of a
+# GET-only, self-seeding stub.
 
 
 # -----------------------------------------------------------------------------

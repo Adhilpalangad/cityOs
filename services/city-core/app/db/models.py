@@ -32,6 +32,7 @@ WORKFLOW_PRIORITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
 # See app/services/workflows.py for the allowed-transition map this enforces.
 WORKFLOW_STATUSES = ("PENDING", "IN_PROGRESS", "ESCALATED", "COMPLETED", "REJECTED")
 ASSET_CONDITIONS = ("EXCELLENT", "GOOD", "FAIR", "POOR", "CRITICAL")
+PROJECT_STATUSES = ("PLANNED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELLED")
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -312,6 +313,10 @@ class CityProject(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        sa.CheckConstraint(f"status IN {PROJECT_STATUSES}", name="ck_city_projects_status"),
     )
 
 

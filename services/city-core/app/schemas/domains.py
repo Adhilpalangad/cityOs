@@ -81,22 +81,7 @@ class EnvironmentReadingRead(BaseModel):
     recorded_at: datetime
 
 
-# Finance
-class CityProjectRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    project_code: str
-    name: str
-    department_code: str
-    budget: float
-    spent: float
-    status: str
-    completion_percentage: float
-    created_at: datetime
-
-
-# Complaints & Workflows
+# Complaints
 class CitizenComplaintCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=150)
     description: str = Field(..., min_length=5)
