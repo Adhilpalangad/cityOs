@@ -81,24 +81,7 @@ class EnvironmentReadingRead(BaseModel):
     recorded_at: datetime
 
 
-# Infrastructure & Finance
-class InfrastructureAssetRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    asset_code: str
-    name: str
-    asset_type: str
-    department_code: str
-    condition: str
-    risk_level: str
-    latitude: float | None = None
-    longitude: float | None = None
-    estimated_cost: float
-    next_maintenance: datetime | None = None
-    created_at: datetime
-
-
+# Finance
 class CityProjectRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

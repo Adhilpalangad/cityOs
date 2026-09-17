@@ -31,6 +31,7 @@ INCIDENT_STATUSES = ("DETECTED", "VERIFIED", "ASSIGNED", "RESPONDING", "RESOLVED
 WORKFLOW_PRIORITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
 # See app/services/workflows.py for the allowed-transition map this enforces.
 WORKFLOW_STATUSES = ("PENDING", "IN_PROGRESS", "ESCALATED", "COMPLETED", "REJECTED")
+ASSET_CONDITIONS = ("EXCELLENT", "GOOD", "FAIR", "POOR", "CRITICAL")
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -281,6 +282,15 @@ class InfrastructureAsset(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        sa.CheckConstraint(
+            f"condition IN {ASSET_CONDITIONS}", name="ck_infrastructure_assets_condition"
+        ),
+        sa.CheckConstraint(
+            f"risk_level IN {RISK_LEVELS}", name="ck_infrastructure_assets_risk_level"
+        ),
     )
 
 

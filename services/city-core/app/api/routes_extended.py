@@ -13,7 +13,6 @@ from app.db.models import (
     EnvironmentReading,
     Hospital,
     Incident,
-    InfrastructureAsset,
     KnowledgeDocument,
     Notification,
     PowerSubstation,
@@ -32,7 +31,6 @@ from app.schemas.domains import (
     CitizenComplaintRead,
     CityProjectRead,
     EnvironmentReadingRead,
-    InfrastructureAssetRead,
     KnowledgeDocumentRead,
     NotificationRead,
     PowerSubstationRead,
@@ -266,57 +264,11 @@ async def get_environment_readings(db: AsyncSession = Depends(get_db)):
 
 
 # -----------------------------------------------------------------------------
-# Infrastructure & Projects
+# Projects
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/infrastructure", response_model=list[InfrastructureAssetRead])
-async def list_infrastructure_assets(db: AsyncSession = Depends(get_db)):
-    stmt = select(InfrastructureAsset).order_by(InfrastructureAsset.asset_code.asc())
-    assets = (await db.scalars(stmt)).all()
-    if not assets:
-        a1 = InfrastructureAsset(
-            asset_code="INF-BR-04",
-            name="Harbor Suspension Bridge",
-            asset_type="Bridge",
-            department_code="INFRASTRUCTURE",
-            condition="GOOD",
-            risk_level="LOW",
-            latitude=9.9816,
-            longitude=76.2999,
-            estimated_cost=15000000.0,
-        )
-        a2 = InfrastructureAsset(
-            asset_code="INF-DR-12",
-            name="Central Main Storm Drain",
-            asset_type="Drainage",
-            department_code="INFRASTRUCTURE",
-            condition="FAIR",
-            risk_level="HIGH",
-            latitude=9.9850,
-            longitude=76.3050,
-            estimated_cost=4200000.0,
-        )
-        db.add_all([a1, a2])
-        await db.commit()
-        assets = [a1, a2]
-    return [
-        InfrastructureAssetRead(
-            id=str(a.id),
-            asset_code=a.asset_code,
-            name=a.name,
-            asset_type=a.asset_type,
-            department_code=a.department_code,
-            condition=a.condition,
-            risk_level=a.risk_level,
-            latitude=a.latitude,
-            longitude=a.longitude,
-            estimated_cost=a.estimated_cost,
-            next_maintenance=a.next_maintenance,
-            created_at=a.created_at,
-        )
-        for a in assets
-    ]
-
-
+# Infrastructure assets: see app/api/routes_infrastructure.py -- moved out
+# once they got real create/update endpoints instead of a GET-only,
+# self-seeding stub.
 @router.get("/api/v1/projects", response_model=list[CityProjectRead])
 async def list_city_projects(db: AsyncSession = Depends(get_db)):
     stmt = select(CityProject).order_by(CityProject.project_code.asc())
