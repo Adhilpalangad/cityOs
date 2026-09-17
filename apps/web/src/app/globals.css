@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Design tokens -----------------------------------------------------
+   Tailwind utilities (bg-surface, text-ink, border-line, ...) are generated
+   from these via tailwind.config.ts's theme.extend.colors, each mapped to
+   the CSS custom property of the same name below -- which flip
+   automatically with the visitor's OS light/dark preference. Nothing in
+   the app hardcodes a color; every surface reads a token. */
+:root {
+  color-scheme: light dark;
+
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface-muted: #eef1f7;
+  --line: #e1e6f0;
+  --ink: #0f1728;
+  --ink-muted: #566079;
+  --ink-faint: #94a0b8;
+  --brand: #0891b2;
+  --brand-strong: #0e7490;
+  --brand-ink: #ffffff;
+  --success: #059669;
+  --danger: #dc2626;
+  --danger-strong: #b91c1c;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #05080f;
+    --surface: #101828;
+    --surface-muted: #17223a;
+    --line: #253150;
+    --ink: #f2f5fb;
+    --ink-muted: #94a3c4;
+    --ink-faint: #55628a;
+    --brand: #22d3ee;
+    --brand-strong: #67e3f7;
+    --brand-ink: #052229;
+    --success: #34d399;
+    --danger: #f87171;
+    --danger-strong: #fca5a5;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #05080f;
+  --surface: #101828;
+  --surface-muted: #17223a;
+  --line: #253150;
+  --ink: #f2f5fb;
+  --ink-muted: #94a3c4;
+  --ink-faint: #55628a;
+  --brand: #22d3ee;
+  --brand-strong: #67e3f7;
+  --brand-ink: #052229;
+  --success: #34d399;
+  --danger: #f87171;
+  --danger-strong: #fca5a5;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  background-image:
+    radial-gradient(60rem 32rem at 85% -10%, color-mix(in oklab, var(--brand) 14%, transparent), transparent),
+    radial-gradient(40rem 24rem at -10% 110%, color-mix(in oklab, var(--brand) 8%, transparent), transparent);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--brand) 35%, transparent);
+}

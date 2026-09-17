@@ -1,0 +1,24 @@
+{
+  "name": "cityos",
+  "private": true,
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@cityos/web",
+    "lint:web": "npm run lint --workspace=@cityos/web",
+    "typecheck:web": "npm run typecheck --workspace=@cityos/web",
+    "test:web": "npm run test --workspace=@cityos/web",
+    "build:web": "npm run build --workspace=@cityos/web"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "@tailwindcss/oxide@4.1.13": true,
+    "esbuild@0.28.2": true,
+    "unrs-resolver@1.12.2": true
+  }
+}
