@@ -14,6 +14,7 @@ from app.api.routes_live import run_consumer
 from app.api.routes_notifications import router as notifications_router
 from app.api.routes_projects import router as projects_router
 from app.api.routes_roads import router as roads_router
+from app.api.routes_search import router as search_router
 from app.api.routes_system import router as system_router
 from app.api.routes_vehicles import router as vehicles_router
 from app.api.routes_workflows import router as workflows_router
@@ -61,5 +62,6 @@ app.include_router(workflows_router)
 app.include_router(infrastructure_router)
 app.include_router(projects_router)
 app.include_router(notifications_router)
+app.include_router(search_router)
 app.include_router(extended_router)
 app.include_router(live_router)

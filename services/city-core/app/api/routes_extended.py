@@ -1,10 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import get_db, require_permission
 from app.db.models import (
     AuditLog,
     BusStop,
@@ -42,7 +42,11 @@ router = APIRouter()
 # -----------------------------------------------------------------------------
 # Transit
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/routes", response_model=list[TransitRouteRead])
+@router.get(
+    "/api/v1/routes",
+    response_model=list[TransitRouteRead],
+    dependencies=[Depends(require_permission("transit.read"))],
+)
 async def list_transit_routes(db: AsyncSession = Depends(get_db)):
     stmt = select(TransitRoute).order_by(TransitRoute.route_number.asc())
     routes = (await db.scalars(stmt)).all()
@@ -86,7 +90,11 @@ async def list_transit_routes(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.get("/api/v1/stops", response_model=list[BusStopRead])
+@router.get(
+    "/api/v1/stops",
+    response_model=list[BusStopRead],
+    dependencies=[Depends(require_permission("transit.read"))],
+)
 async def list_bus_stops(db: AsyncSession = Depends(get_db)):
     stmt = select(BusStop).order_by(BusStop.code.asc())
     stops = (await db.scalars(stmt)).all()
@@ -136,7 +144,11 @@ async def list_bus_stops(db: AsyncSession = Depends(get_db)):
 # -----------------------------------------------------------------------------
 # Utilities (Water & Energy)
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/water", response_model=list[WaterZoneRead])
+@router.get(
+    "/api/v1/water",
+    response_model=list[WaterZoneRead],
+    dependencies=[Depends(require_permission("water.read"))],
+)
 async def list_water_zones(db: AsyncSession = Depends(get_db)):
     stmt = select(WaterZone).order_by(WaterZone.zone_code.asc())
     zones = (await db.scalars(stmt)).all()
@@ -178,7 +190,11 @@ async def list_water_zones(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.get("/api/v1/energy", response_model=list[PowerSubstationRead])
+@router.get(
+    "/api/v1/energy",
+    response_model=list[PowerSubstationRead],
+    dependencies=[Depends(require_permission("energy.read"))],
+)
 async def list_power_substations(db: AsyncSession = Depends(get_db)):
     stmt = select(PowerSubstation).order_by(PowerSubstation.substation_code.asc())
     substations = (await db.scalars(stmt)).all()
@@ -220,7 +236,11 @@ async def list_power_substations(db: AsyncSession = Depends(get_db)):
 # -----------------------------------------------------------------------------
 # Environment
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/environment", response_model=list[EnvironmentReadingRead])
+@router.get(
+    "/api/v1/environment",
+    response_model=list[EnvironmentReadingRead],
+    dependencies=[Depends(require_permission("environment.read"))],
+)
 async def get_environment_readings(db: AsyncSession = Depends(get_db)):
     stmt = select(EnvironmentReading).order_by(EnvironmentReading.recorded_at.desc()).limit(10)
     readings = (await db.scalars(stmt)).all()
@@ -268,7 +288,11 @@ async def get_environment_readings(db: AsyncSession = Depends(get_db)):
 # -----------------------------------------------------------------------------
 # Citizen Complaints
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/complaints", response_model=list[CitizenComplaintRead])
+@router.get(
+    "/api/v1/complaints",
+    response_model=list[CitizenComplaintRead],
+    dependencies=[Depends(require_permission("complaint.read"))],
+)
 async def list_complaints(db: AsyncSession = Depends(get_db)):
     stmt = select(CitizenComplaint).order_by(CitizenComplaint.created_at.desc())
     complaints = (await db.scalars(stmt)).all()
@@ -285,7 +309,7 @@ async def list_complaints(db: AsyncSession = Depends(get_db)):
             reporter_email="citizen@example.com",
             department_code="INFRASTRUCTURE",
         )
-        db.add([c1])
+        db.add(c1)
         await db.commit()
         complaints = [c1]
     return [
@@ -307,7 +331,11 @@ async def list_complaints(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.post("/api/v1/complaints", response_model=CitizenComplaintRead)
+@router.post(
+    "/api/v1/complaints",
+    response_model=CitizenComplaintRead,
+    dependencies=[Depends(require_permission("complaint.create"))],
+)
 async def create_complaint(body: CitizenComplaintCreate, db: AsyncSession = Depends(get_db)):
     num = f"CMP-{uuid.uuid4().hex[:6].upper()}"
     complaint = CitizenComplaint(
@@ -348,7 +376,11 @@ async def create_complaint(body: CitizenComplaintCreate, db: AsyncSession = Depe
 # -----------------------------------------------------------------------------
 # Audit & Notifications
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/audit", response_model=list[AuditLogRead])
+@router.get(
+    "/api/v1/audit",
+    response_model=list[AuditLogRead],
+    dependencies=[Depends(require_permission("audit.read"))],
+)
 async def list_audit_logs(db: AsyncSession = Depends(get_db)):
     stmt = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(20)
     logs = (await db.scalars(stmt)).all()
@@ -397,7 +429,11 @@ async def list_audit_logs(db: AsyncSession = Depends(get_db)):
 # -----------------------------------------------------------------------------
 # Simulation Engine
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/simulations", response_model=list[SimulationScenarioRead])
+@router.get(
+    "/api/v1/simulations",
+    response_model=list[SimulationScenarioRead],
+    dependencies=[Depends(require_permission("simulation.read"))],
+)
 async def list_simulations(db: AsyncSession = Depends(get_db)):
     stmt = select(SimulationScenario).order_by(SimulationScenario.created_at.desc())
     scenarios = (await db.scalars(stmt)).all()
@@ -415,7 +451,7 @@ async def list_simulations(db: AsyncSession = Depends(get_db)):
             },
             status="COMPLETED",
         )
-        db.add([s1])
+        db.add(s1)
         await db.commit()
         scenarios = [s1]
     return [
@@ -433,7 +469,11 @@ async def list_simulations(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.post("/api/v1/simulations", response_model=SimulationScenarioRead)
+@router.post(
+    "/api/v1/simulations",
+    response_model=SimulationScenarioRead,
+    dependencies=[Depends(require_permission("simulation.create"))],
+)
 async def create_simulation(body: SimulationScenarioCreate, db: AsyncSession = Depends(get_db)):
     code = f"SCEN-{uuid.uuid4().hex[:6].upper()}"
     # Run deterministic simulation engine calculation
@@ -475,7 +515,11 @@ async def create_simulation(body: SimulationScenarioCreate, db: AsyncSession = D
 # -----------------------------------------------------------------------------
 # AI City Supervisor & Multi-Agent Engine
 # -----------------------------------------------------------------------------
-@router.post("/api/v1/ai/analyze", response_model=AIAnalysisResponse)
+@router.post(
+    "/api/v1/ai/analyze",
+    response_model=AIAnalysisResponse,
+    dependencies=[Depends(require_permission("ai.analyze"))],
+)
 async def analyze_city_state(body: AIAnalysisRequest):
     return AIAnalysisResponse(
         summary=(
@@ -506,7 +550,11 @@ async def analyze_city_state(body: AIAnalysisRequest):
 # -----------------------------------------------------------------------------
 # RAG Knowledge Search
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/knowledge", response_model=list[KnowledgeDocumentRead])
+@router.get(
+    "/api/v1/knowledge",
+    response_model=list[KnowledgeDocumentRead],
+    dependencies=[Depends(require_permission("knowledge.read"))],
+)
 async def list_knowledge_documents(db: AsyncSession = Depends(get_db)):
     stmt = select(KnowledgeDocument).order_by(KnowledgeDocument.created_at.desc())
     docs = (await db.scalars(stmt)).all()
@@ -551,70 +599,16 @@ async def list_knowledge_documents(db: AsyncSession = Depends(get_db)):
     ]
 
 
-# -----------------------------------------------------------------------------
-# Universal Search
-# -----------------------------------------------------------------------------
-@router.get("/api/v1/search")
-async def universal_search(
-    q: str = Query(..., min_length=1),
-    db: AsyncSession = Depends(get_db),
-):
-    pattern = f"%{q.lower()}%"
-    roads = (
-        await db.scalars(select(Road).where(func.lower(Road.name).like(pattern)).limit(5))
-    ).all()
-    hospitals = (
-        await db.scalars(select(Hospital).where(func.lower(Hospital.name).like(pattern)).limit(5))
-    ).all()
-    incidents = (
-        await db.scalars(
-            select(Incident).where(func.lower(Incident.incident_number).like(pattern)).limit(5)
-        )
-    ).all()
-    complaints = (
-        await db.scalars(
-            select(CitizenComplaint)
-            .where(func.lower(CitizenComplaint.title).like(pattern))
-            .limit(5)
-        )
-    ).all()
-
-    return {
-        "query": q,
-        "results": {
-            "roads": [
-                {"id": str(r.id), "name": r.name, "code": r.code, "status": r.status} for r in roads
-            ],
-            "hospitals": [
-                {"id": str(h.id), "name": h.name, "code": h.code, "beds_total": h.beds_total}
-                for h in hospitals
-            ],
-            "incidents": [
-                {
-                    "id": str(i.id),
-                    "number": i.incident_number,
-                    "severity": i.severity,
-                    "status": i.status,
-                }
-                for i in incidents
-            ],
-            "complaints": [
-                {
-                    "id": str(c.id),
-                    "number": c.complaint_number,
-                    "title": c.title,
-                    "status": c.status,
-                }
-                for c in complaints
-            ],
-        },
-    }
+# Universal Search: see app/api/routes_search.py -- moved out and extended
+# to cover vehicles, workflow tasks, infrastructure assets, and projects
+# (it previously only covered roads/hospitals/incidents/complaints), and to
+# require authentication, which it never did here.
 
 
 # -----------------------------------------------------------------------------
 # Universal Analytics
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/analytics")
+@router.get("/api/v1/analytics", dependencies=[Depends(require_permission("analytics.read"))])
 async def get_city_analytics(db: AsyncSession = Depends(get_db)):
     active_incidents = (
         await db.scalar(select(func.count(Incident.id)).where(Incident.status != "RESOLVED")) or 0
