@@ -15,11 +15,22 @@ def build_engine():
     url = settings.async_database_url
     kwargs: dict = {}
     if url.startswith("sqlite"):
-        # Unit tests use an in-memory SQLite database; a single pooled
-        # connection keeps the schema and data alive for the engine's life.
-        from sqlalchemy.pool import StaticPool
+        kwargs = {"connect_args": {"check_same_thread": False}}
+        if ":memory:" in url:
+            # In-memory SQLite (unit tests) needs a single pooled connection
+            # -- every new connection to `:memory:` otherwise gets its own
+            # empty database, wiping the schema/data between queries.
+            # StaticPool is *only* correct for :memory:; applying it to a
+            # file-based SQLite database (e.g. someone running this service
+            # locally without Docker) hangs every query past the first --
+            # StaticPool forces every session onto the one shared
+            # connection, and that serialization deadlocks against
+            # aiosqlite's own per-connection background thread. A file-based
+            # database doesn't need connection persistence like :memory:
+            # does, so it just uses SQLAlchemy's normal pool.
+            from sqlalchemy.pool import StaticPool
 
-        kwargs = {"connect_args": {"check_same_thread": False}, "poolclass": StaticPool}
+            kwargs["poolclass"] = StaticPool
     return create_async_engine(url, **kwargs)
 
 
