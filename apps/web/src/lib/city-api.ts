@@ -3,12 +3,14 @@ import { env } from "./env";
 
 const BASE = env.apiUrl;
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T | null> {
+async function apiFetch<T>(path: string, options?: RequestInit & { token?: string }): Promise<T | null> {
   try {
+    const { token, headers, ...rest } = options ?? {};
     const res = await fetch(`${BASE}${path}`, {
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
-      ...options,
+      headers: token ? { ...headers, Authorization: `Bearer ${token}` } : headers,
+      ...rest,
     });
     if (!res.ok) return null;
     return (await res.json()) as T;
@@ -383,30 +385,30 @@ export async function getAnalytics() {
 }
 
 // Roads
-export async function getRoads(page = 1) {
-  const res = await apiFetch<{ items: Road[]; meta: PageMeta }>(`/api/v1/roads?page=${page}&page_size=20`);
+export async function getRoads(page = 1, token?: string) {
+  const res = await apiFetch<{ items: Road[]; meta: PageMeta }>(`/api/v1/roads?page=${page}&page_size=20`, { token });
   if (res && res.items && res.items.length > 0) return res;
   return { items: MOCK_ROADS, meta: { page: 1, page_size: 20, total: MOCK_ROADS.length, total_pages: 1 } };
 }
 
 // Hospitals
-export async function getHospitals() {
-  const res = await apiFetch<{ items: Hospital[]; meta: PageMeta }>("/api/v1/hospitals?page_size=20");
+export async function getHospitals(token?: string) {
+  const res = await apiFetch<{ items: Hospital[]; meta: PageMeta }>("/api/v1/hospitals?page_size=20", { token });
   if (res && res.items && res.items.length > 0) return res;
   return { items: MOCK_HOSPITALS, meta: { page: 1, page_size: 20, total: MOCK_HOSPITALS.length, total_pages: 1 } };
 }
 
 // Vehicles
-export async function getVehicles() {
-  const res = await apiFetch<{ items: Vehicle[]; meta: PageMeta }>("/api/v1/vehicles?page_size=20");
+export async function getVehicles(token?: string) {
+  const res = await apiFetch<{ items: Vehicle[]; meta: PageMeta }>("/api/v1/vehicles?page_size=20", { token });
   if (res && res.items && res.items.length > 0) return res;
   return { items: MOCK_VEHICLES, meta: { page: 1, page_size: 20, total: MOCK_VEHICLES.length, total_pages: 1 } };
 }
 
 // Incidents
-export async function getIncidents(page = 1, status?: string) {
+export async function getIncidents(page = 1, status?: string, token?: string) {
   const q = status ? `&status=${status}` : "";
-  const res = await apiFetch<{ items: Incident[]; meta: PageMeta }>(`/api/v1/incidents?page=${page}${q}`);
+  const res = await apiFetch<{ items: Incident[]; meta: PageMeta }>(`/api/v1/incidents?page=${page}${q}`, { token });
   if (res && res.items && res.items.length > 0) return res;
   return { items: MOCK_INCIDENTS, meta: { page: 1, page_size: 20, total: MOCK_INCIDENTS.length, total_pages: 1 } };
 }

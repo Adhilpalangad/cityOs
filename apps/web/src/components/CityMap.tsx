@@ -5,6 +5,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { GeoJSONSource, MapLayerMouseEvent, StyleSpecification } from "maplibre-gl";
+import { getAccessToken } from "@/lib/auth-client";
+import { getHospitals, getIncidents, getRoads, getVehicles } from "@/lib/city-api";
 import type { Hospital, Incident, Road, Vehicle } from "@/lib/city-api";
 import { useLiveFeed } from "@/lib/live-socket";
 
@@ -101,13 +103,53 @@ function firstCenter(roads: Road[], hospitals: Hospital[]): [number, number] {
   return [75.7817, 11.2506]; // fallback: Kozhikode city centre (Mananchira)
 }
 
-export function CityMap({ roads: initialRoads, hospitals, vehicles: initialVehicles, incidents: initialIncidents }: CityMapProps) {
+export function CityMap({
+  roads: ssrRoads,
+  hospitals: ssrHospitals,
+  vehicles: ssrVehicles,
+  incidents: ssrIncidents,
+}: CityMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [styleLoaded, setStyleLoaded] = useState(false);
   const [selected, setSelected] = useState<Selected | null>(null);
   const [layers, setLayers] = useState({ roads: true, hospitals: true, vehicles: true, incidents: true });
 
+  // The parent page (app/city/digital-twin/page.tsx) is a Server Component,
+  // so its initial fetch runs on the Next.js server -- which has no access
+  // to the browser's localStorage access token. Every city-core endpoint
+  // requires auth, so that server-side fetch always 401s and silently falls
+  // back to city-api.ts's hardcoded mock data. That's fine as an instant
+  // first paint, but it means real (and real-*time*) data never shows up
+  // without this: re-fetch client-side, where the real token lives, and
+  // swap it in once it arrives.
+  const [initialRoads, setInitialRoads] = useState(ssrRoads);
+  const [initialHospitals, setInitialHospitals] = useState(ssrHospitals);
+  const [initialVehicles, setInitialVehicles] = useState(ssrVehicles);
+  const [initialIncidents, setInitialIncidents] = useState(ssrIncidents);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return; // not logged in (or SSR) -- keep whatever we have
+    let cancelled = false;
+    Promise.all([
+      getRoads(1, token),
+      getHospitals(token),
+      getVehicles(token),
+      getIncidents(1, undefined, token),
+    ]).then(([roadsRes, hospitalsRes, vehiclesRes, incidentsRes]) => {
+      if (cancelled) return;
+      setInitialRoads(roadsRes.items);
+      setInitialHospitals(hospitalsRes.items);
+      setInitialVehicles(vehiclesRes.items);
+      setInitialIncidents(incidentsRes.items);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hospitals = initialHospitals;
   const { roads: liveRoads, vehicles: liveVehicles, incidents: liveIncidents, connected } = useLiveFeed();
 
   const roads = mergeByKey(initialRoads, liveRoads, (r) => r.code);
