@@ -1,6 +1,6 @@
 "use client";
 
-import { MapLibreMap, NavigationControl } from "maplibre-gl";
+import { MapLibreMap, NavigationControl, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
@@ -26,6 +26,19 @@ import { useLiveFeed } from "@/lib/live-socket";
  * to fix (spec section 86). They get real markers once those tables gain
  * real coordinates.
  */
+
+// MapLibre GL JS derives its Web Worker's URL from import.meta.url at
+// runtime and expects an absolute http(s) URL back; Next's bundler doesn't
+// resolve it that way for a node_modules package, so the worker silently
+// never loads (see scripts/copy-maplibre-worker.mjs for the full story).
+// Without it, every GeoJSON-backed layer here -- roads, hospitals,
+// vehicles, incidents -- fails to render while the raster base map (which
+// doesn't need the worker) looks fine. Point it at the static copy that
+// script places in /public instead. Set once at module scope, before any
+// MapLibreMap is constructed.
+if (typeof window !== "undefined") {
+  setWorkerUrl(`${window.location.origin}/maplibre-gl-worker.mjs`);
+}
 
 const OSM_STYLE: StyleSpecification = {
   version: 8,
