@@ -49,25 +49,30 @@ const MOCK_ANALYTICS = {
   },
 };
 
+// Real Kozhikode roads/hospitals, real sourced coordinates -- same data as
+// services/city-core/app/db/seed.py, so the mock fallback and a freshly
+// seeded backend show the same city (Wikipedia/OSM-sourced; Government
+// Medical College's position is an estimate -- "~8km east of the city
+// centre" per its own published description, not a surveyed pin).
 const MOCK_ROADS: Road[] = [
   {
     id: "r1",
-    code: "ROAD-101",
-    name: "Grand Coastal Arterial",
-    road_type: "expressway",
+    code: "ROAD-1024",
+    name: "Mavoor Road",
+    road_type: "arterial",
     status: "OPEN",
     capacity: 1200,
     current_vehicle_count: 840,
     average_speed_kmh: 42.5,
     traffic_level: "HIGH",
     risk_level: "MEDIUM",
-    waypoints: [[12.9716, 77.5946], [12.975, 77.599]],
+    waypoints: [[11.2506, 75.7817], [11.2602, 75.7926]],
     created_at: new Date().toISOString(),
   },
   {
     id: "r2",
-    code: "ROAD-102",
-    name: "Metro Central Boulevard",
+    code: "ROAD-1026",
+    name: "Beach Road",
     road_type: "arterial",
     status: "OPEN",
     capacity: 800,
@@ -75,21 +80,21 @@ const MOCK_ROADS: Road[] = [
     average_speed_kmh: 58.0,
     traffic_level: "LOW",
     risk_level: "LOW",
-    waypoints: [[12.96, 77.58], [12.965, 77.585]],
+    waypoints: [[11.2506, 75.7817], [11.2561, 75.7694]],
     created_at: new Date().toISOString(),
   },
   {
     id: "r3",
-    code: "ROAD-103",
-    name: "Tech Corridor Bypass",
+    code: "ROAD-1025",
+    name: "NH 66 (Kozhikode Bypass)",
     road_type: "highway",
     status: "MAINTENANCE",
-    capacity: 1500,
+    capacity: 1800,
     current_vehicle_count: 1100,
     average_speed_kmh: 28.0,
     traffic_level: "CRITICAL",
     risk_level: "HIGH",
-    waypoints: [[12.98, 77.6], [12.99, 77.61]],
+    waypoints: [[11.2646, 75.8117], [11.219, 75.834]],
     created_at: new Date().toISOString(),
   },
 ];
@@ -97,40 +102,40 @@ const MOCK_ROADS: Road[] = [
 const MOCK_HOSPITALS: Hospital[] = [
   {
     id: "h1",
-    code: "HOSP-01",
-    name: "Central Metropolitan Hospital",
-    latitude: 12.9716,
-    longitude: 77.5946,
-    beds_total: 450,
-    beds_occupied: 380,
-    icu_total: 60,
-    icu_occupied: 52,
+    code: "GMC-KKD",
+    name: "Government Medical College Kozhikode",
+    latitude: 11.249,
+    longitude: 75.858,
+    beds_total: 1850,
+    beds_occupied: 1480,
+    icu_total: 120,
+    icu_occupied: 96,
     emergency_capacity: "HIGH",
     status: "OPERATIONAL",
   },
   {
     id: "h2",
-    code: "HOSP-02",
-    name: "Eastside Trauma & General",
-    latitude: 12.982,
-    longitude: 77.612,
-    beds_total: 280,
-    beds_occupied: 190,
-    icu_total: 35,
-    icu_occupied: 22,
+    code: "BMH-KKD",
+    name: "Baby Memorial Hospital",
+    latitude: 11.2602,
+    longitude: 75.7926,
+    beds_total: 500,
+    beds_occupied: 340,
+    icu_total: 55,
+    icu_occupied: 34,
     emergency_capacity: "MEDIUM",
     status: "OPERATIONAL",
   },
   {
     id: "h3",
-    code: "HOSP-03",
-    name: "St. Jude Emergency Center",
-    latitude: 12.955,
-    longitude: 77.575,
-    beds_total: 150,
-    beds_occupied: 142,
-    icu_total: 20,
-    icu_occupied: 19,
+    code: "MIMS-KKD",
+    name: "Aster MIMS Kozhikode",
+    latitude: 11.2459,
+    longitude: 75.7982,
+    beds_total: 670,
+    beds_occupied: 635,
+    icu_total: 70,
+    icu_occupied: 66,
     emergency_capacity: "CRITICAL",
     status: "LIMITED",
   },
@@ -142,8 +147,8 @@ const MOCK_VEHICLES: Vehicle[] = [
     vehicle_id: "AMB-101",
     vehicle_type: "ambulance",
     status: "ACTIVE",
-    latitude: 12.972,
-    longitude: 77.595,
+    latitude: 11.255,
+    longitude: 75.82,
     speed_kmh: 65.0,
     heading_degrees: 180.0,
   },
@@ -152,8 +157,8 @@ const MOCK_VEHICLES: Vehicle[] = [
     vehicle_id: "BUS-402",
     vehicle_type: "public_transport",
     status: "ACTIVE",
-    latitude: 12.961,
-    longitude: 77.581,
+    latitude: 11.2506,
+    longitude: 75.7817,
     speed_kmh: 35.0,
     heading_degrees: 90.0,
   },
@@ -163,36 +168,36 @@ const MOCK_INCIDENTS: Incident[] = [
   {
     id: "i1",
     incident_number: "INC-2026-0891",
-    incident_type: "TRAFFIC_ACCIDENT",
+    incident_type: "ROAD_ACCIDENT",
     severity: "CRITICAL",
-    status: "DISPATCHED",
-    description: "Multi-vehicle collision blocking 2 lanes on Tech Corridor Bypass",
-    latitude: 12.985,
-    longitude: 77.605,
+    status: "RESPONDING",
+    description: "Multi-vehicle collision blocking 2 lanes on NH 66 near Ramanattukara",
+    latitude: 11.23,
+    longitude: 75.84,
     department_code: "TRAFFIC",
     created_at: new Date().toISOString(),
   },
   {
     id: "i2",
     incident_number: "INC-2026-0892",
-    incident_type: "POWER_OUTAGE",
+    incident_type: "INFRASTRUCTURE_FAILURE",
     severity: "HIGH",
-    status: "IN_PROGRESS",
-    description: "Transformer trip affecting Metro Central North district",
-    latitude: 12.962,
-    longitude: 77.583,
+    status: "ASSIGNED",
+    description: "Transformer trip affecting Mankavu grid",
+    latitude: 11.265,
+    longitude: 75.795,
     department_code: "ENERGY",
     created_at: new Date().toISOString(),
   },
   {
     id: "i3",
     incident_number: "INC-2026-0893",
-    incident_type: "WATER_LEAK",
+    incident_type: "INFRASTRUCTURE_FAILURE",
     severity: "MEDIUM",
-    status: "REPORTED",
-    description: "High pressure main valve rupture reported by citizen",
-    latitude: 12.97,
-    longitude: 77.59,
+    status: "VERIFIED",
+    description: "High pressure main valve rupture reported near Chalappuram",
+    latitude: 11.256,
+    longitude: 75.783,
     department_code: "WATER",
     created_at: new Date().toISOString(),
   },
@@ -202,18 +207,18 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: "n1",
     title: "Critical Traffic Alert",
-    message: "Tech Corridor Bypass experiencing heavy delay due to INC-2026-0891.",
+    message: "NH 66 near Ramanattukara experiencing heavy delay due to INC-2026-0891.",
     severity: "CRITICAL",
     target_department: "TRAFFIC",
-    channel: "DASHBOARD",
+    channel: "IN_APP",
     is_read: false,
     created_at: new Date().toISOString(),
   },
   {
     id: "n2",
     title: "Hospital ICU Capacity Warning",
-    message: "St. Jude Emergency Center ICU occupancy reaches 95%.",
-    severity: "HIGH",
+    message: "Aster MIMS Kozhikode ICU occupancy reaches 94%.",
+    severity: "WARNING",
     target_department: "HEALTHCARE",
     channel: "EMAIL",
     is_read: false,
@@ -222,8 +227,8 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: "n3",
     title: "Heavy Rain Advisory",
-    message: "Precipitation forecast exceeded 45mm/hr in North Zone.",
-    severity: "MEDIUM",
+    message: "Precipitation forecast exceeded 45mm/hr in the Beypore zone.",
+    severity: "WARNING",
     target_department: "ENVIRONMENT",
     channel: "SMS",
     is_read: true,
@@ -234,21 +239,21 @@ const MOCK_NOTIFICATIONS: Notification[] = [
 const MOCK_WATER_ZONES: WaterZone[] = [
   {
     id: "w1",
-    zone_code: "WZ-NORTH",
-    name: "North District Water Supply",
+    zone_code: "WZ-VELLAYIL",
+    name: "Vellayil Reservoir Zone",
     capacity_liters: 5000000.0,
     consumption_lps: 420.5,
-    status: "OPERATIONAL",
+    status: "NORMAL",
     leak_risk: "LOW",
     outages_active: 0,
   },
   {
     id: "w2",
-    zone_code: "WZ-CENTRAL",
-    name: "Central Commercial Grid",
+    zone_code: "WZ-CHALAPPURAM",
+    name: "Chalappuram Distribution Zone",
     capacity_liters: 3500000.0,
     consumption_lps: 680.0,
-    status: "LIMITED",
+    status: "WARNING",
     leak_risk: "HIGH",
     outages_active: 1,
   },
@@ -257,8 +262,8 @@ const MOCK_WATER_ZONES: WaterZone[] = [
 const MOCK_SUBSTATIONS: PowerSubstation[] = [
   {
     id: "s1",
-    substation_code: "SUB-GRID-01",
-    name: "Grand Coastal Substation Alpha",
+    substation_code: "SUB-MANKAVU",
+    name: "Mankavu Grid Substation",
     capacity_mw: 250.0,
     load_mw: 195.0,
     status: "OPERATIONAL",
@@ -266,11 +271,11 @@ const MOCK_SUBSTATIONS: PowerSubstation[] = [
   },
   {
     id: "s2",
-    substation_code: "SUB-GRID-02",
-    name: "Metro Central Substation Beta",
+    substation_code: "SUB-KALLAI",
+    name: "Kallai Substation",
     capacity_mw: 180.0,
     load_mw: 172.0,
-    status: "LIMITED",
+    status: "HIGH_LOAD",
     outage_risk: "HIGH",
   },
 ];
@@ -278,7 +283,7 @@ const MOCK_SUBSTATIONS: PowerSubstation[] = [
 const MOCK_ENVIRONMENT: EnvironmentReading[] = [
   {
     id: "e1",
-    zone_code: "ZONE-NORTH",
+    zone_code: "ZONE-BEYPORE",
     temperature_c: 28.5,
     rainfall_mm: 12.4,
     humidity_pct: 72.0,
@@ -288,12 +293,12 @@ const MOCK_ENVIRONMENT: EnvironmentReading[] = [
   },
   {
     id: "e2",
-    zone_code: "ZONE-SOUTH",
+    zone_code: "ZONE-WESTHILL",
     temperature_c: 31.0,
     rainfall_mm: 48.0,
     humidity_pct: 88.0,
     aqi: 82,
-    flood_risk: "MODERATE",
+    flood_risk: "HIGH",
     recorded_at: new Date().toISOString(),
   },
 ];
@@ -302,10 +307,10 @@ const MOCK_COMPLAINTS: CitizenComplaint[] = [
   {
     id: "c1",
     complaint_number: "CMP-2026-0041",
-    title: "Pothole near Central Market Bus Station",
+    title: "Pothole near Mananchira Bus Station",
     description: "Large pothole causing vehicle slowdowns and safety hazards.",
     category: "ROADS",
-    status: "OPEN",
+    status: "SUBMITTED",
     image_url: null,
     reporter_email: "citizen1@example.com",
     department_code: "INFRASTRUCTURE",
@@ -314,10 +319,10 @@ const MOCK_COMPLAINTS: CitizenComplaint[] = [
   {
     id: "c2",
     complaint_number: "CMP-2026-0042",
-    title: "Streetlight failure on 4th Main",
+    title: "Streetlight failure on Bank Road",
     description: "Multiple streetlights dark creating unsafe night crossing.",
     category: "LIGHTING",
-    status: "IN_PROGRESS",
+    status: "ASSIGNED",
     image_url: null,
     reporter_email: "citizen2@example.com",
     department_code: "ENERGY",
@@ -329,7 +334,7 @@ const MOCK_WORKFLOWS: WorkflowTask[] = [
   {
     id: "wk1",
     task_number: "TSK-2026-012",
-    title: "Inspect valve leak at Central Market",
+    title: "Inspect valve leak near Chalappuram",
     department_code: "WATER",
     assigned_to: "Engineer R. Sharma",
     priority: "HIGH",
@@ -342,10 +347,10 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
   {
     id: "a1",
     actor: "admin@cityos.example",
-    action: "DISPATCH_EMERGENCY_UNIT",
-    target_resource: "INC-2026-0891",
+    action: "ROAD_STATUS_CHANGED_OPEN_TO_CLOSED",
+    target_resource: "ROAD-1025",
     department_code: "TRAFFIC",
-    reason: "Severe congestion on highway",
+    reason: "Severe congestion on NH 66",
     approved_by: "SUPER_ADMIN",
     timestamp: new Date().toISOString(),
   },
@@ -355,10 +360,10 @@ const MOCK_SIMULATIONS: SimulationScenario[] = [
   {
     id: "sim1",
     scenario_code: "SIM-FLOOD-01",
-    name: "100-Year Coastal Flood Impact Analysis",
-    description: "Simulates 120mm rainfall and sea level surge on coastal power stations.",
+    name: "Monsoon Flood Impact Analysis (Beypore-Kallai)",
+    description: "Simulates 120mm rainfall and storm surge on Beypore/Kallai infrastructure.",
     parameters: { rainfall_mm: 120, surge_m: 1.5 },
-    results: { flooded_substations: 2, affected_citizens: 42000, risk_score: "HIGH" },
+    results: { flooded_substations: 1, affected_citizens: 18000, risk_score: "HIGH" },
     status: "COMPLETED",
     created_at: new Date().toISOString(),
   },
@@ -407,13 +412,13 @@ export async function getIncidents(page = 1, status?: string) {
 export async function getTransitRoutes() {
   const res = await apiFetch<TransitRoute[]>("/api/v1/routes");
   return res && res.length > 0 ? res : [
-    { id: "tr1", route_number: "RT-10", name: "North-South Metro Express", origin: "North Terminal", destination: "South Hub", distance_km: 18.5, active_buses: 12, status: "ACTIVE" }
+    { id: "tr1", route_number: "BUS-101", name: "Mananchira - Medical College via Mavoor Road", origin: "Mananchira", destination: "Govt. Medical College", distance_km: 8.5, active_buses: 12, status: "ACTIVE" }
   ];
 }
 export async function getBusStops() {
   const res = await apiFetch<BusStop[]>("/api/v1/stops");
   return res && res.length > 0 ? res : [
-    { id: "bs1", code: "STP-01", name: "Central Station North", latitude: 12.97, longitude: 77.59, route_code: "RT-10", passenger_count: 85 }
+    { id: "bs1", code: "STOP-01", name: "Mananchira", latitude: 11.2506, longitude: 75.7817, route_code: "BUS-101", passenger_count: 142 }
   ];
 }
 
@@ -437,13 +442,13 @@ export async function getEnvironmentReadings() {
 export async function getInfrastructureAssets() {
   const res = await apiFetch<InfrastructureAsset[]>("/api/v1/infrastructure");
   return res && res.length > 0 ? res : [
-    { id: "ast1", asset_code: "AST-BRG-01", name: "Harbor Flyover Bridge Span", asset_type: "BRIDGE", department_code: "INFRASTRUCTURE", condition: "GOOD", risk_level: "LOW", estimated_cost: 4500000.0, next_maintenance: "2026-11-15" }
+    { id: "ast1", asset_code: "AST-BR-01", name: "Kallai River Bridge", asset_type: "Bridge", department_code: "INFRASTRUCTURE", condition: "GOOD", risk_level: "LOW", estimated_cost: 4500000.0, next_maintenance: "2026-11-15" }
   ];
 }
 export async function getCityProjects() {
   const res = await apiFetch<CityProject[]>("/api/v1/projects");
   return res && res.length > 0 ? res : [
-    { id: "prj1", project_code: "PRJ-METRO-04", name: "Metro Line 4 Underground Extension", department_code: "TRANSIT", budget: 125000000.0, spent: 84000000.0, status: "IN_PROGRESS", completion_percentage: 67.2 }
+    { id: "prj1", project_code: "PRJ-BYPASS-04", name: "Mini Bypass Road Widening", department_code: "INFRASTRUCTURE", budget: 125000000.0, spent: 84000000.0, status: "IN_PROGRESS", completion_percentage: 67.2 }
   ];
 }
 
@@ -469,7 +474,7 @@ export async function submitComplaint(body: {
     title: body.title,
     description: body.description,
     category: body.category,
-    status: "OPEN",
+    status: "SUBMITTED",
     image_url: null,
     reporter_email: body.reporter_email ?? "citizen@example.com",
     department_code: "GENERAL",
@@ -512,7 +517,7 @@ export async function runSimulation(body: {
     name: body.name,
     description: body.description ?? "Custom urban simulation scenario",
     parameters: body.parameters,
-    results: { risk_level: "MODERATE", affected_zones: ["NORTH", "CENTRAL"], estimated_impact_index: 68.4 },
+    results: { risk_level: "MODERATE", affected_zones: ["BEYPORE", "CHALAPPURAM"], estimated_impact_index: 68.4 },
     status: "COMPLETED",
     created_at: new Date().toISOString(),
   };
@@ -526,10 +531,10 @@ export async function analyzeCity(query: string) {
     body: JSON.stringify({ query }),
   });
   return res ?? {
-    summary: `AI CityOS Analysis for: "${query}". Detected potential congestion around Tech Corridor and elevated ICU occupancy in St. Jude Emergency Center.`,
-    risks_detected: ["High traffic congestion on Tech Corridor Bypass", "St. Jude ICU occupancy > 90%", "Water pressure drop in Central Commercial Grid"],
+    summary: `AI CityOS Analysis for: "${query}". Detected potential congestion around NH 66 and elevated ICU occupancy at Aster MIMS Kozhikode.`,
+    risks_detected: ["High traffic congestion on NH 66 near Ramanattukara", "Aster MIMS ICU occupancy > 90%", "Water pressure drop in Chalappuram Distribution Zone"],
     affected_systems: ["TRAFFIC", "HEALTHCARE", "WATER"],
-    recommendations: ["Reroute Metro Line buses via Harbor Expressway", "Alert Eastside Trauma to prepare standby ICU beds", "Dispatch maintenance team to Central Main valve #4"],
+    recommendations: ["Reroute BUS-101 via Beach Road", "Alert Baby Memorial Hospital to prepare standby ICU beds", "Dispatch maintenance team to Chalappuram valve #4"],
     supporting_data: { traffic_index: 74.2, active_incidents: 3 },
     confidence: 0.94,
   };

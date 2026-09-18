@@ -48,24 +48,26 @@ async def list_transit_routes(db: AsyncSession = Depends(get_db)):
     stmt = select(TransitRoute).order_by(TransitRoute.route_number.asc())
     routes = (await db.scalars(stmt)).all()
     if not routes:
-        # Seed default realistic routes if empty
+        # Seed real Kozhikode transit routes if empty (waypoints are real
+        # sourced coordinates for the named places, connected as a
+        # straight-line approximation -- not surveyed route geometry).
         r1 = TransitRoute(
             route_number="BUS-101",
-            name="Metro Express Line 1",
-            origin="North Hub",
-            destination="Central Station",
-            distance_km=18.5,
+            name="Mananchira - Medical College via Mavoor Road",
+            origin="Mananchira",
+            destination="Govt. Medical College",
+            distance_km=8.5,
             active_buses=12,
-            waypoints=[[9.9816, 76.2999], [9.9850, 76.3050], [9.9900, 76.3120]],
+            waypoints=[[11.2506, 75.7817], [11.2602, 75.7926], [11.2490, 75.8580]],
         )
         r2 = TransitRoute(
             route_number="BUS-204",
-            name="Coastal Ring Corridor",
-            origin="Harbor Gate",
-            destination="Tech Park East",
-            distance_km=24.2,
+            name="Beach - Thondayad via Airport Road",
+            origin="Kozhikode Beach",
+            destination="Thondayad Junction",
+            distance_km=9.2,
             active_buses=8,
-            waypoints=[[9.9700, 76.2800], [9.9750, 76.2900], [9.9820, 76.3000]],
+            waypoints=[[11.2561, 75.7694], [11.2506, 75.7817], [11.2646, 75.8117]],
         )
         db.add_all([r1, r2])
         await db.commit()
@@ -98,25 +100,25 @@ async def list_bus_stops(db: AsyncSession = Depends(get_db)):
     if not stops:
         s1 = BusStop(
             code="STOP-01",
-            name="Central Station Terminal",
-            latitude=9.9816,
-            longitude=76.2999,
+            name="Mananchira",
+            latitude=11.2506,
+            longitude=75.7817,
             route_code="BUS-101",
             passenger_count=142,
         )
         s2 = BusStop(
             code="STOP-02",
-            name="City Hospital South",
-            latitude=9.9850,
-            longitude=76.3050,
+            name="Arayidathupalam (Baby Memorial Hospital)",
+            latitude=11.2602,
+            longitude=75.7926,
             route_code="BUS-101",
             passenger_count=88,
         )
         s3 = BusStop(
             code="STOP-03",
-            name="Financial District Interchange",
-            latitude=9.9900,
-            longitude=76.3120,
+            name="Thondayad Junction",
+            latitude=11.2646,
+            longitude=75.8117,
             route_code="BUS-204",
             passenger_count=215,
         )
@@ -151,8 +153,8 @@ async def list_water_zones(db: AsyncSession = Depends(get_db)):
     zones = (await db.scalars(stmt)).all()
     if not zones:
         z1 = WaterZone(
-            zone_code="WZ-NORTH",
-            name="Northern Reservoir Zone",
+            zone_code="WZ-VELLAYIL",
+            name="Vellayil Reservoir Zone",
             capacity_liters=4500000.0,
             consumption_lps=145.2,
             status="NORMAL",
@@ -160,8 +162,8 @@ async def list_water_zones(db: AsyncSession = Depends(get_db)):
             outages_active=0,
         )
         z2 = WaterZone(
-            zone_code="WZ-CENTRAL",
-            name="Central Municipal Distribution",
+            zone_code="WZ-CHALAPPURAM",
+            name="Chalappuram Distribution Zone",
             capacity_liters=3200000.0,
             consumption_lps=210.8,
             status="WARNING",
@@ -197,16 +199,16 @@ async def list_power_substations(db: AsyncSession = Depends(get_db)):
     substations = (await db.scalars(stmt)).all()
     if not substations:
         ps1 = PowerSubstation(
-            substation_code="SUB-01",
-            name="Metro Main Grid Substation",
+            substation_code="SUB-MANKAVU",
+            name="Mankavu Grid Substation",
             capacity_mw=250.0,
             load_mw=184.5,
             status="OPERATIONAL",
             outage_risk="LOW",
         )
         ps2 = PowerSubstation(
-            substation_code="SUB-02",
-            name="Industrial Corridor Grid",
+            substation_code="SUB-KALLAI",
+            name="Kallai Substation",
             capacity_mw=180.0,
             load_mw=162.0,
             status="HIGH_LOAD",
@@ -243,7 +245,7 @@ async def get_environment_readings(db: AsyncSession = Depends(get_db)):
     readings = (await db.scalars(stmt)).all()
     if not readings:
         er1 = EnvironmentReading(
-            zone_code="ZONE-NORTH",
+            zone_code="ZONE-BEYPORE",
             temperature_c=29.4,
             rainfall_mm=42.5,
             humidity_pct=88.0,
@@ -251,7 +253,7 @@ async def get_environment_readings(db: AsyncSession = Depends(get_db)):
             flood_risk="HIGH",
         )
         er2 = EnvironmentReading(
-            zone_code="ZONE-SOUTH",
+            zone_code="ZONE-WESTHILL",
             temperature_c=31.1,
             rainfall_mm=12.0,
             humidity_pct=72.0,

@@ -98,7 +98,7 @@ function firstCenter(roads: Road[], hospitals: Hospital[]): [number, number] {
   }
   const hospital = hospitals[0];
   if (hospital) return [hospital.longitude, hospital.latitude];
-  return [76.2999, 9.9816]; // fallback: roughly the seeded city center
+  return [75.7817, 11.2506]; // fallback: Kozhikode city centre (Mananchira)
 }
 
 export function CityMap({ roads: initialRoads, hospitals, vehicles: initialVehicles, incidents }: CityMapProps) {

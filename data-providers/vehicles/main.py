@@ -29,24 +29,26 @@ KAFKA_BROKERS = os.environ.get("KAFKA_BROKERS", "localhost:19092")
 KAFKA_TOPIC = "vehicle.events"
 
 # ---------------------------------------------------------------------------
-# Vehicle registry
+# Vehicle registry -- jittered around real Kozhikode locations: buses near
+# the city centre/Mananchira, ambulances near the Medical College/Baby
+# Memorial Hospital area, fleet vehicles out toward Thondayad Junction.
 # ---------------------------------------------------------------------------
 VEHICLES: list[dict[str, Any]] = [
     {"vehicle_id": f"BUS-{101 + i}", "type": "public_transport",
-     "lat": 9.9816 + random.uniform(-0.05, 0.05),
-     "lon": 76.2999 + random.uniform(-0.05, 0.05),
+     "lat": 11.2506 + random.uniform(-0.02, 0.02),
+     "lon": 75.7817 + random.uniform(-0.02, 0.02),
      "heading": random.uniform(0, 360), "speed": random.uniform(20, 50)}
     for i in range(12)
 ] + [
     {"vehicle_id": f"AMB-{17 + i}", "type": "ambulance",
-     "lat": 9.9750 + random.uniform(-0.03, 0.03),
-     "lon": 76.2900 + random.uniform(-0.03, 0.03),
+     "lat": 11.2550 + random.uniform(-0.015, 0.015),
+     "lon": 75.8200 + random.uniform(-0.02, 0.02),
      "heading": random.uniform(0, 360), "speed": random.uniform(0, 80)}
     for i in range(6)
 ] + [
     {"vehicle_id": f"FLT-{201 + i}", "type": "fleet",
-     "lat": 9.9900 + random.uniform(-0.04, 0.04),
-     "lon": 76.3100 + random.uniform(-0.04, 0.04),
+     "lat": 11.2600 + random.uniform(-0.015, 0.015),
+     "lon": 75.8000 + random.uniform(-0.015, 0.015),
      "heading": random.uniform(0, 360), "speed": random.uniform(10, 40)}
     for i in range(8)
 ]
@@ -71,8 +73,9 @@ def _move_vehicle(v: dict[str, Any]) -> None:
     v["heading"] = (v["heading"] + random.uniform(-8, 8)) % 360
     v["speed"] = max(0, v["speed"] + random.uniform(-5, 5))
     # Clamp to city bounds
-    v["lat"] = max(9.92, min(10.03, v["lat"]))
-    v["lon"] = max(76.24, min(76.38, v["lon"]))
+    # Roughly Kozhikode city proper -- centre out to Thondayad/Medical College.
+    v["lat"] = max(11.15, min(11.30, v["lat"]))
+    v["lon"] = max(75.75, min(75.90, v["lon"]))
 
 
 def _get_events() -> list[dict[str, Any]]:

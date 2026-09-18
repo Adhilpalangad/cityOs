@@ -29,15 +29,19 @@ KAFKA_BROKERS = os.environ.get("KAFKA_BROKERS", "localhost:19092")
 KAFKA_TOPIC = "traffic.events"
 
 # ---------------------------------------------------------------------------
-# Synthetic road registry
+# Synthetic road registry -- real Kozhikode road names. This provider only
+# ever emits traffic counts/speeds (no geometry -- see city-core's
+# app/services/live_ingest.py, which upserts a Road row by this `id` but
+# can't give it a real shape from this alone), so only the names need to be
+# real; the traffic numbers themselves are still synthetic.
 # ---------------------------------------------------------------------------
 ROADS = [
-    {"id": "ROAD-1024", "name": "Metro Arterial North", "capacity": 1200},
-    {"id": "ROAD-1025", "name": "Harbor Expressway", "capacity": 900},
-    {"id": "ROAD-1026", "name": "Central Market Corridor", "capacity": 600},
-    {"id": "ROAD-1027", "name": "Tech Park Ring Road", "capacity": 800},
-    {"id": "ROAD-1028", "name": "Coastal Bypass Highway", "capacity": 1500},
-    {"id": "ROAD-1029", "name": "Old Town Heritage Rd", "capacity": 400},
+    {"id": "ROAD-1024", "name": "Mavoor Road", "capacity": 1200},
+    {"id": "ROAD-1025", "name": "NH 66 (Kozhikode Bypass)", "capacity": 1800},
+    {"id": "ROAD-1026", "name": "Beach Road", "capacity": 600},
+    {"id": "ROAD-1027", "name": "Airport Road", "capacity": 900},
+    {"id": "ROAD-1028", "name": "Mini Bypass Road", "capacity": 1000},
+    {"id": "ROAD-1029", "name": "Bank Road", "capacity": 400},
 ]
 
 # Live state for each road
