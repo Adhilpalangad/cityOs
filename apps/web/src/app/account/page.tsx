@@ -109,9 +109,14 @@ export default function AccountPage() {
               </div>
             </div>
 
-            <Button variant="danger-outline" onClick={onLogout} className="mt-8 w-full sm:w-auto">
-              Sign out
-            </Button>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/city/command-center">
+                <Button variant="primary">Open dashboard</Button>
+              </Link>
+              <Button variant="danger-outline" onClick={onLogout}>
+                Sign out
+              </Button>
+            </div>
           </>
         )}
       </Card>
