@@ -1,47 +1,36 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import get_db, require_permission
 from app.db.models import (
     AuditLog,
     BusStop,
-    CitizenComplaint,
-    CityProject,
     EnvironmentReading,
     Hospital,
     Incident,
-    InfrastructureAsset,
     KnowledgeDocument,
-    Notification,
     PowerSubstation,
     Road,
     SimulationScenario,
     TransitRoute,
     Vehicle,
     WaterZone,
-    WorkflowTask,
 )
 from app.schemas.domains import (
     AIAnalysisRequest,
     AIAnalysisResponse,
     AuditLogRead,
     BusStopRead,
-    CitizenComplaintCreate,
-    CitizenComplaintRead,
-    CityProjectRead,
     EnvironmentReadingRead,
-    InfrastructureAssetRead,
     KnowledgeDocumentRead,
-    NotificationRead,
     PowerSubstationRead,
     SimulationScenarioCreate,
     SimulationScenarioRead,
     TransitRouteRead,
     WaterZoneRead,
-    WorkflowTaskRead,
 )
 
 router = APIRouter()
@@ -50,29 +39,35 @@ router = APIRouter()
 # -----------------------------------------------------------------------------
 # Transit
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/routes", response_model=list[TransitRouteRead])
+@router.get(
+    "/api/v1/routes",
+    response_model=list[TransitRouteRead],
+    dependencies=[Depends(require_permission("transit.read"))],
+)
 async def list_transit_routes(db: AsyncSession = Depends(get_db)):
     stmt = select(TransitRoute).order_by(TransitRoute.route_number.asc())
     routes = (await db.scalars(stmt)).all()
     if not routes:
-        # Seed default realistic routes if empty
+        # Seed real Kozhikode transit routes if empty (waypoints are real
+        # sourced coordinates for the named places, connected as a
+        # straight-line approximation -- not surveyed route geometry).
         r1 = TransitRoute(
             route_number="BUS-101",
-            name="Metro Express Line 1",
-            origin="North Hub",
-            destination="Central Station",
-            distance_km=18.5,
+            name="Mananchira - Medical College via Mavoor Road",
+            origin="Mananchira",
+            destination="Govt. Medical College",
+            distance_km=8.5,
             active_buses=12,
-            waypoints=[[9.9816, 76.2999], [9.9850, 76.3050], [9.9900, 76.3120]],
+            waypoints=[[11.2506, 75.7817], [11.2602, 75.7926], [11.2490, 75.8580]],
         )
         r2 = TransitRoute(
             route_number="BUS-204",
-            name="Coastal Ring Corridor",
-            origin="Harbor Gate",
-            destination="Tech Park East",
-            distance_km=24.2,
+            name="Beach - Thondayad via Airport Road",
+            origin="Kozhikode Beach",
+            destination="Thondayad Junction",
+            distance_km=9.2,
             active_buses=8,
-            waypoints=[[9.9700, 76.2800], [9.9750, 76.2900], [9.9820, 76.3000]],
+            waypoints=[[11.2561, 75.7694], [11.2506, 75.7817], [11.2646, 75.8117]],
         )
         db.add_all([r1, r2])
         await db.commit()
@@ -94,32 +89,36 @@ async def list_transit_routes(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.get("/api/v1/stops", response_model=list[BusStopRead])
+@router.get(
+    "/api/v1/stops",
+    response_model=list[BusStopRead],
+    dependencies=[Depends(require_permission("transit.read"))],
+)
 async def list_bus_stops(db: AsyncSession = Depends(get_db)):
     stmt = select(BusStop).order_by(BusStop.code.asc())
     stops = (await db.scalars(stmt)).all()
     if not stops:
         s1 = BusStop(
             code="STOP-01",
-            name="Central Station Terminal",
-            latitude=9.9816,
-            longitude=76.2999,
+            name="Mananchira",
+            latitude=11.2506,
+            longitude=75.7817,
             route_code="BUS-101",
             passenger_count=142,
         )
         s2 = BusStop(
             code="STOP-02",
-            name="City Hospital South",
-            latitude=9.9850,
-            longitude=76.3050,
+            name="Arayidathupalam (Baby Memorial Hospital)",
+            latitude=11.2602,
+            longitude=75.7926,
             route_code="BUS-101",
             passenger_count=88,
         )
         s3 = BusStop(
             code="STOP-03",
-            name="Financial District Interchange",
-            latitude=9.9900,
-            longitude=76.3120,
+            name="Thondayad Junction",
+            latitude=11.2646,
+            longitude=75.8117,
             route_code="BUS-204",
             passenger_count=215,
         )
@@ -144,14 +143,18 @@ async def list_bus_stops(db: AsyncSession = Depends(get_db)):
 # -----------------------------------------------------------------------------
 # Utilities (Water & Energy)
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/water", response_model=list[WaterZoneRead])
+@router.get(
+    "/api/v1/water",
+    response_model=list[WaterZoneRead],
+    dependencies=[Depends(require_permission("water.read"))],
+)
 async def list_water_zones(db: AsyncSession = Depends(get_db)):
     stmt = select(WaterZone).order_by(WaterZone.zone_code.asc())
     zones = (await db.scalars(stmt)).all()
     if not zones:
         z1 = WaterZone(
-            zone_code="WZ-NORTH",
-            name="Northern Reservoir Zone",
+            zone_code="WZ-VELLAYIL",
+            name="Vellayil Reservoir Zone",
             capacity_liters=4500000.0,
             consumption_lps=145.2,
             status="NORMAL",
@@ -159,8 +162,8 @@ async def list_water_zones(db: AsyncSession = Depends(get_db)):
             outages_active=0,
         )
         z2 = WaterZone(
-            zone_code="WZ-CENTRAL",
-            name="Central Municipal Distribution",
+            zone_code="WZ-CHALAPPURAM",
+            name="Chalappuram Distribution Zone",
             capacity_liters=3200000.0,
             consumption_lps=210.8,
             status="WARNING",
@@ -186,22 +189,26 @@ async def list_water_zones(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.get("/api/v1/energy", response_model=list[PowerSubstationRead])
+@router.get(
+    "/api/v1/energy",
+    response_model=list[PowerSubstationRead],
+    dependencies=[Depends(require_permission("energy.read"))],
+)
 async def list_power_substations(db: AsyncSession = Depends(get_db)):
     stmt = select(PowerSubstation).order_by(PowerSubstation.substation_code.asc())
     substations = (await db.scalars(stmt)).all()
     if not substations:
         ps1 = PowerSubstation(
-            substation_code="SUB-01",
-            name="Metro Main Grid Substation",
+            substation_code="SUB-MANKAVU",
+            name="Mankavu Grid Substation",
             capacity_mw=250.0,
             load_mw=184.5,
             status="OPERATIONAL",
             outage_risk="LOW",
         )
         ps2 = PowerSubstation(
-            substation_code="SUB-02",
-            name="Industrial Corridor Grid",
+            substation_code="SUB-KALLAI",
+            name="Kallai Substation",
             capacity_mw=180.0,
             load_mw=162.0,
             status="HIGH_LOAD",
@@ -228,13 +235,17 @@ async def list_power_substations(db: AsyncSession = Depends(get_db)):
 # -----------------------------------------------------------------------------
 # Environment
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/environment", response_model=list[EnvironmentReadingRead])
+@router.get(
+    "/api/v1/environment",
+    response_model=list[EnvironmentReadingRead],
+    dependencies=[Depends(require_permission("environment.read"))],
+)
 async def get_environment_readings(db: AsyncSession = Depends(get_db)):
     stmt = select(EnvironmentReading).order_by(EnvironmentReading.recorded_at.desc()).limit(10)
     readings = (await db.scalars(stmt)).all()
     if not readings:
         er1 = EnvironmentReading(
-            zone_code="ZONE-NORTH",
+            zone_code="ZONE-BEYPORE",
             temperature_c=29.4,
             rainfall_mm=42.5,
             humidity_pct=88.0,
@@ -242,7 +253,7 @@ async def get_environment_readings(db: AsyncSession = Depends(get_db)):
             flood_risk="HIGH",
         )
         er2 = EnvironmentReading(
-            zone_code="ZONE-SOUTH",
+            zone_code="ZONE-WESTHILL",
             temperature_c=31.1,
             rainfall_mm=12.0,
             humidity_pct=72.0,
@@ -267,219 +278,28 @@ async def get_environment_readings(db: AsyncSession = Depends(get_db)):
     ]
 
 
-# -----------------------------------------------------------------------------
-# Infrastructure & Projects
-# -----------------------------------------------------------------------------
-@router.get("/api/v1/infrastructure", response_model=list[InfrastructureAssetRead])
-async def list_infrastructure_assets(db: AsyncSession = Depends(get_db)):
-    stmt = select(InfrastructureAsset).order_by(InfrastructureAsset.asset_code.asc())
-    assets = (await db.scalars(stmt)).all()
-    if not assets:
-        a1 = InfrastructureAsset(
-            asset_code="INF-BR-04",
-            name="Harbor Suspension Bridge",
-            asset_type="Bridge",
-            department_code="INFRASTRUCTURE",
-            condition="GOOD",
-            risk_level="LOW",
-            latitude=9.9816,
-            longitude=76.2999,
-            estimated_cost=15000000.0,
-        )
-        a2 = InfrastructureAsset(
-            asset_code="INF-DR-12",
-            name="Central Main Storm Drain",
-            asset_type="Drainage",
-            department_code="INFRASTRUCTURE",
-            condition="FAIR",
-            risk_level="HIGH",
-            latitude=9.9850,
-            longitude=76.3050,
-            estimated_cost=4200000.0,
-        )
-        db.add_all([a1, a2])
-        await db.commit()
-        assets = [a1, a2]
-    return [
-        InfrastructureAssetRead(
-            id=str(a.id),
-            asset_code=a.asset_code,
-            name=a.name,
-            asset_type=a.asset_type,
-            department_code=a.department_code,
-            condition=a.condition,
-            risk_level=a.risk_level,
-            latitude=a.latitude,
-            longitude=a.longitude,
-            estimated_cost=a.estimated_cost,
-            next_maintenance=a.next_maintenance,
-            created_at=a.created_at,
-        )
-        for a in assets
-    ]
+# Infrastructure assets: see app/api/routes_infrastructure.py.
+# City projects: see app/api/routes_projects.py.
+# Both moved out once they got real create/update endpoints instead of a
+# GET-only, self-seeding stub.
 
 
-@router.get("/api/v1/projects", response_model=list[CityProjectRead])
-async def list_city_projects(db: AsyncSession = Depends(get_db)):
-    stmt = select(CityProject).order_by(CityProject.project_code.asc())
-    projects = (await db.scalars(stmt)).all()
-    if not projects:
-        p1 = CityProject(
-            project_code="PRJ-2026-01",
-            name="Smart Flood Resilience Upgrade",
-            department_code="INFRASTRUCTURE",
-            budget=5000000.0,
-            spent=3120000.0,
-            status="IN_PROGRESS",
-            completion_percentage=68.0,
-        )
-        p2 = CityProject(
-            project_code="PRJ-2026-02",
-            name="Transit Fleet Electrification",
-            department_code="TRANSPORT",
-            budget=12000000.0,
-            spent=8900000.0,
-            status="IN_PROGRESS",
-            completion_percentage=74.0,
-        )
-        db.add_all([p1, p2])
-        await db.commit()
-        projects = [p1, p2]
-    return [
-        CityProjectRead(
-            id=str(p.id),
-            project_code=p.project_code,
-            name=p.name,
-            department_code=p.department_code,
-            budget=p.budget,
-            spent=p.spent,
-            status=p.status,
-            completion_percentage=p.completion_percentage,
-            created_at=p.created_at,
-        )
-        for p in projects
-    ]
-
-
-# -----------------------------------------------------------------------------
-# Citizen Complaints & Workflows
-# -----------------------------------------------------------------------------
-@router.get("/api/v1/complaints", response_model=list[CitizenComplaintRead])
-async def list_complaints(db: AsyncSession = Depends(get_db)):
-    stmt = select(CitizenComplaint).order_by(CitizenComplaint.created_at.desc())
-    complaints = (await db.scalars(stmt)).all()
-    if not complaints:
-        c1 = CitizenComplaint(
-            complaint_number="CMP-9041",
-            title="Pothole near Hospital Gate",
-            description="Deep pothole causing severe traffic slowdown on Road 1024.",
-            category="Infrastructure",
-            latitude=9.9850,
-            longitude=76.3050,
-            image_url="https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600",
-            status="SUBMITTED",
-            reporter_email="citizen@example.com",
-            department_code="INFRASTRUCTURE",
-        )
-        db.add([c1])
-        await db.commit()
-        complaints = [c1]
-    return [
-        CitizenComplaintRead(
-            id=str(c.id),
-            complaint_number=c.complaint_number,
-            title=c.title,
-            description=c.description,
-            category=c.category,
-            latitude=c.latitude,
-            longitude=c.longitude,
-            image_url=c.image_url,
-            status=c.status,
-            reporter_email=c.reporter_email,
-            department_code=c.department_code,
-            created_at=c.created_at,
-        )
-        for c in complaints
-    ]
-
-
-@router.post("/api/v1/complaints", response_model=CitizenComplaintRead)
-async def create_complaint(body: CitizenComplaintCreate, db: AsyncSession = Depends(get_db)):
-    num = f"CMP-{uuid.uuid4().hex[:6].upper()}"
-    complaint = CitizenComplaint(
-        complaint_number=num,
-        title=body.title,
-        description=body.description,
-        category=body.category,
-        latitude=body.latitude,
-        longitude=body.longitude,
-        image_url=body.image_url,
-        reporter_email=body.reporter_email,
-        department_code="CITIZEN_SERVICES",
-    )
-    db.add(complaint)
-    await db.commit()
-    await db.refresh(complaint)
-    return CitizenComplaintRead(
-        id=str(complaint.id),
-        complaint_number=complaint.complaint_number,
-        title=complaint.title,
-        description=complaint.description,
-        category=complaint.category,
-        latitude=complaint.latitude,
-        longitude=complaint.longitude,
-        image_url=complaint.image_url,
-        status=complaint.status,
-        reporter_email=complaint.reporter_email,
-        department_code=complaint.department_code,
-        created_at=complaint.created_at,
-    )
-
-
-@router.get("/api/v1/workflows", response_model=list[WorkflowTaskRead])
-async def list_workflow_tasks(db: AsyncSession = Depends(get_db)):
-    stmt = select(WorkflowTask).order_by(WorkflowTask.created_at.desc())
-    tasks = (await db.scalars(stmt)).all()
-    if not tasks:
-        t1 = WorkflowTask(
-            task_number="TSK-102",
-            title="Emergency Drainage Clearing Approval",
-            department_code="INFRASTRUCTURE",
-            assigned_to="Officer Smith",
-            priority="HIGH",
-            status="PENDING",
-        )
-        t2 = WorkflowTask(
-            task_number="TSK-105",
-            title="Ambulance Fleet Re-allocation",
-            department_code="EMERGENCY",
-            assigned_to="Dispatcher Davis",
-            priority="CRITICAL",
-            status="IN_PROGRESS",
-        )
-        db.add_all([t1, t2])
-        await db.commit()
-        tasks = [t1, t2]
-    return [
-        WorkflowTaskRead(
-            id=str(t.id),
-            task_number=t.task_number,
-            title=t.title,
-            department_code=t.department_code,
-            assigned_to=t.assigned_to,
-            priority=t.priority,
-            status=t.status,
-            sla_deadline=t.sla_deadline,
-            created_at=t.created_at,
-        )
-        for t in tasks
-    ]
+# Citizen complaints: see app/api/routes_complaints.py -- moved out once
+# they got a real status-transition/assignment/resolution API instead of a
+# GET+POST-only stub.
+# Workflow tasks: see app/api/routes_workflows.py -- moved out of this file
+# once they got a real create/assign/status-transition API instead of a
+# GET-only, self-seeding stub.
 
 
 # -----------------------------------------------------------------------------
 # Audit & Notifications
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/audit", response_model=list[AuditLogRead])
+@router.get(
+    "/api/v1/audit",
+    response_model=list[AuditLogRead],
+    dependencies=[Depends(require_permission("audit.read"))],
+)
 async def list_audit_logs(db: AsyncSession = Depends(get_db)):
     stmt = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(20)
     logs = (await db.scalars(stmt)).all()
@@ -518,47 +338,21 @@ async def list_audit_logs(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.get("/api/v1/notifications", response_model=list[NotificationRead])
-async def list_notifications(db: AsyncSession = Depends(get_db)):
-    stmt = select(Notification).order_by(Notification.created_at.desc()).limit(20)
-    notifs = (await db.scalars(stmt)).all()
-    if not notifs:
-        n1 = Notification(
-            title="Critical Flood Risk in Zone 4",
-            message="Heavy rainfall detected. Flood risk updated to HIGH on Road 1024.",
-            severity="CRITICAL",
-            target_department="EMERGENCY",
-            channel="IN_APP",
-        )
-        n2 = Notification(
-            title="Hospital ICU Capacity Alert",
-            message="City Hospital South ICU occupancy exceeded 85%.",
-            severity="WARNING",
-            target_department="HEALTHCARE",
-            channel="IN_APP",
-        )
-        db.add_all([n1, n2])
-        await db.commit()
-        notifs = [n1, n2]
-    return [
-        NotificationRead(
-            id=str(n.id),
-            title=n.title,
-            message=n.message,
-            severity=n.severity,
-            target_department=n.target_department,
-            channel=n.channel,
-            is_read=n.is_read,
-            created_at=n.created_at,
-        )
-        for n in notifs
-    ]
+# Notifications: see app/api/routes_notifications.py for the CRUD surface
+# and app/services/notifications.py for the trigger rules that create them
+# automatically (wired into routes_incidents.py, routes_roads.py, and
+# routes_hospitals.py) -- moved out once it became a real engine instead of
+# a GET-only, self-seeding stub.
 
 
 # -----------------------------------------------------------------------------
 # Simulation Engine
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/simulations", response_model=list[SimulationScenarioRead])
+@router.get(
+    "/api/v1/simulations",
+    response_model=list[SimulationScenarioRead],
+    dependencies=[Depends(require_permission("simulation.read"))],
+)
 async def list_simulations(db: AsyncSession = Depends(get_db)):
     stmt = select(SimulationScenario).order_by(SimulationScenario.created_at.desc())
     scenarios = (await db.scalars(stmt)).all()
@@ -576,7 +370,7 @@ async def list_simulations(db: AsyncSession = Depends(get_db)):
             },
             status="COMPLETED",
         )
-        db.add([s1])
+        db.add(s1)
         await db.commit()
         scenarios = [s1]
     return [
@@ -594,7 +388,11 @@ async def list_simulations(db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.post("/api/v1/simulations", response_model=SimulationScenarioRead)
+@router.post(
+    "/api/v1/simulations",
+    response_model=SimulationScenarioRead,
+    dependencies=[Depends(require_permission("simulation.create"))],
+)
 async def create_simulation(body: SimulationScenarioCreate, db: AsyncSession = Depends(get_db)):
     code = f"SCEN-{uuid.uuid4().hex[:6].upper()}"
     # Run deterministic simulation engine calculation
@@ -636,7 +434,11 @@ async def create_simulation(body: SimulationScenarioCreate, db: AsyncSession = D
 # -----------------------------------------------------------------------------
 # AI City Supervisor & Multi-Agent Engine
 # -----------------------------------------------------------------------------
-@router.post("/api/v1/ai/analyze", response_model=AIAnalysisResponse)
+@router.post(
+    "/api/v1/ai/analyze",
+    response_model=AIAnalysisResponse,
+    dependencies=[Depends(require_permission("ai.analyze"))],
+)
 async def analyze_city_state(body: AIAnalysisRequest):
     return AIAnalysisResponse(
         summary=(
@@ -667,7 +469,11 @@ async def analyze_city_state(body: AIAnalysisRequest):
 # -----------------------------------------------------------------------------
 # RAG Knowledge Search
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/knowledge", response_model=list[KnowledgeDocumentRead])
+@router.get(
+    "/api/v1/knowledge",
+    response_model=list[KnowledgeDocumentRead],
+    dependencies=[Depends(require_permission("knowledge.read"))],
+)
 async def list_knowledge_documents(db: AsyncSession = Depends(get_db)):
     stmt = select(KnowledgeDocument).order_by(KnowledgeDocument.created_at.desc())
     docs = (await db.scalars(stmt)).all()
@@ -712,70 +518,16 @@ async def list_knowledge_documents(db: AsyncSession = Depends(get_db)):
     ]
 
 
-# -----------------------------------------------------------------------------
-# Universal Search
-# -----------------------------------------------------------------------------
-@router.get("/api/v1/search")
-async def universal_search(
-    q: str = Query(..., min_length=1),
-    db: AsyncSession = Depends(get_db),
-):
-    pattern = f"%{q.lower()}%"
-    roads = (
-        await db.scalars(select(Road).where(func.lower(Road.name).like(pattern)).limit(5))
-    ).all()
-    hospitals = (
-        await db.scalars(select(Hospital).where(func.lower(Hospital.name).like(pattern)).limit(5))
-    ).all()
-    incidents = (
-        await db.scalars(
-            select(Incident).where(func.lower(Incident.incident_number).like(pattern)).limit(5)
-        )
-    ).all()
-    complaints = (
-        await db.scalars(
-            select(CitizenComplaint)
-            .where(func.lower(CitizenComplaint.title).like(pattern))
-            .limit(5)
-        )
-    ).all()
-
-    return {
-        "query": q,
-        "results": {
-            "roads": [
-                {"id": str(r.id), "name": r.name, "code": r.code, "status": r.status} for r in roads
-            ],
-            "hospitals": [
-                {"id": str(h.id), "name": h.name, "code": h.code, "beds_total": h.beds_total}
-                for h in hospitals
-            ],
-            "incidents": [
-                {
-                    "id": str(i.id),
-                    "number": i.incident_number,
-                    "severity": i.severity,
-                    "status": i.status,
-                }
-                for i in incidents
-            ],
-            "complaints": [
-                {
-                    "id": str(c.id),
-                    "number": c.complaint_number,
-                    "title": c.title,
-                    "status": c.status,
-                }
-                for c in complaints
-            ],
-        },
-    }
+# Universal Search: see app/api/routes_search.py -- moved out and extended
+# to cover vehicles, workflow tasks, infrastructure assets, and projects
+# (it previously only covered roads/hospitals/incidents/complaints), and to
+# require authentication, which it never did here.
 
 
 # -----------------------------------------------------------------------------
 # Universal Analytics
 # -----------------------------------------------------------------------------
-@router.get("/api/v1/analytics")
+@router.get("/api/v1/analytics", dependencies=[Depends(require_permission("analytics.read"))])
 async def get_city_analytics(db: AsyncSession = Depends(get_db)):
     active_incidents = (
         await db.scalar(select(func.count(Incident.id)).where(Incident.status != "RESOLVED")) or 0

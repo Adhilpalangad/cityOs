@@ -14,11 +14,23 @@ from typing import Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+# Real Kozhikode hospitals, real coordinates (Wikipedia / OSM-sourced;
+# Government Medical College's is an estimate -- "~8km east of the city
+# centre" per its own published description, not a surveyed pin). Bed/ICU
+# counts are approximate publicly reported figures, not live data.
 HOSPITALS: list[dict[str, Any]] = [
-    {"code": "H-01", "name": "City General Hospital", "beds_total": 420, "icu_total": 50, "lat": 9.9816, "lon": 76.2999},
-    {"code": "H-02", "name": "Metro Medical Center", "beds_total": 380, "icu_total": 42, "lat": 9.9850, "lon": 76.3050},
-    {"code": "H-03", "name": "Harbor District Hospital", "beds_total": 290, "icu_total": 32, "lat": 9.9750, "lon": 76.2900},
-    {"code": "H-04", "name": "North Zone Community Clinic", "beds_total": 120, "icu_total": 12, "lat": 9.9950, "lon": 76.3200},
+    {
+        "code": "GMC-KKD", "name": "Government Medical College Kozhikode",
+        "beds_total": 1850, "icu_total": 120, "lat": 11.2490, "lon": 75.8580,
+    },
+    {
+        "code": "BMH-KKD", "name": "Baby Memorial Hospital",
+        "beds_total": 500, "icu_total": 55, "lat": 11.2602, "lon": 75.7926,
+    },
+    {
+        "code": "MIMS-KKD", "name": "Aster MIMS Kozhikode",
+        "beds_total": 670, "icu_total": 70, "lat": 11.2459, "lon": 75.7982,
+    },
 ]
 
 hospital_state: dict[str, dict[str, Any]] = {}

@@ -10,6 +10,7 @@ from app.core.errors import AppError
 from app.db.models import Hospital
 from app.schemas.common import PageMeta
 from app.schemas.hospitals import HospitalCreate, HospitalListResponse, HospitalRead, HospitalUpdate
+from app.services.notifications import ICU_CAPACITY_ALERT_THRESHOLD, notify
 
 router = APIRouter(prefix="/api/v1/hospitals", tags=["hospitals"])
 
@@ -120,12 +121,35 @@ async def update_hospital(
     hospital_id: uuid.UUID, payload: HospitalUpdate, db: AsyncSession = Depends(get_db)
 ) -> HospitalRead:
     hospital = await _load_or_404(db, hospital_id)
+
+    def _icu_ratio() -> float:
+        return hospital.icu_occupied / hospital.icu_total if hospital.icu_total else 0.0
+
+    was_over_threshold = _icu_ratio() >= ICU_CAPACITY_ALERT_THRESHOLD
+
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(hospital, field, value)
     if hospital.beds_occupied > hospital.beds_total:
         raise AppError(400, "INVALID_CAPACITY", "beds_occupied cannot exceed beds_total.")
     if hospital.icu_occupied > hospital.icu_total:
         raise AppError(400, "INVALID_CAPACITY", "icu_occupied cannot exceed icu_total.")
+
+    # Spec section 48's third trigger rule: ICU capacity crossing a
+    # threshold notifies Health Control. Fires once on the crossing, not on
+    # every update while still over threshold.
+    now_over_threshold = _icu_ratio() >= ICU_CAPACITY_ALERT_THRESHOLD
+    if now_over_threshold and not was_over_threshold:
+        notify(
+            db,
+            title=f"ICU capacity alert: {hospital.name}",
+            message=(
+                f"{hospital.name} ICU occupancy reached {hospital.icu_occupied}/"
+                f"{hospital.icu_total} ({_icu_ratio():.0%})."
+            ),
+            severity="CRITICAL",
+            target_department="HEALTHCARE",
+        )
+
     await db.commit()
     return _to_read(hospital)
 

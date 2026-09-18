@@ -29,7 +29,11 @@ export default function LoginPage() {
     try {
       const tokens = await login(parsed.data);
       saveTokens(tokens);
-      router.push("/account");
+      // /account is a bare profile page with no app navigation (it lives
+      // outside the /city route group, so it never gets CityNav) -- landing
+      // there straight after login was a dead end with nothing to click.
+      // Command Center is the real app shell, nav included.
+      router.push("/city/command-center");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {

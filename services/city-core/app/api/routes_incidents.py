@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, require_permission
+from app.api.deps import CurrentUser, get_db, require_permission
+from app.api.routes_live import manager as live_manager
 from app.core.errors import AppError
 from app.db.models import Incident
 from app.schemas.common import PageMeta
@@ -18,7 +19,9 @@ from app.schemas.incidents import (
     IncidentStatusUpdate,
     IncidentUpdate,
 )
+from app.services import audit
 from app.services.incidents import generate_incident_number, require_status, validate_transition
+from app.services.notifications import notify
 
 router = APIRouter(prefix="/api/v1/incidents", tags=["incidents"])
 
@@ -39,6 +42,7 @@ def _to_read(incident: Incident) -> IncidentRead:
         assigned_to=incident.assigned_to,
         response_time_seconds=incident.response_time_seconds,
         resolved_at=incident.resolved_at,
+        image_url=incident.image_url,
         created_at=incident.created_at,
         updated_at=incident.updated_at,
     )
@@ -132,11 +136,32 @@ async def create_incident(
         road_id=road_uuid,
         reporter=payload.reporter,
         department_code=payload.department_code,
+        image_url=payload.image_url,
         status="DETECTED",
     )
     db.add(incident)
+
+    # Spec section 48's own first trigger rule: a critical incident notifies
+    # emergency control the moment it's detected, not on some later review.
+    if incident.severity == "CRITICAL":
+        notify(
+            db,
+            title=f"Critical incident: {incident.incident_number}",
+            message=incident.description or f"{incident.incident_type} reported as CRITICAL.",
+            severity="CRITICAL",
+            target_department=incident.department_code or "EMERGENCY",
+        )
+
     await db.commit()
-    return _to_read(incident)
+    read = _to_read(incident)
+    # Live map feed: any incident creation shows up immediately, whether it
+    # came from the synthetic data-providers/incidents provider (via Kafka
+    # -> app/services/live_ingest.py) or a real operator/API call like this
+    # one -- both paths broadcast over the same /ws/live connection.
+    await live_manager.broadcast(
+        {"type": "INCIDENT_UPDATE", "incident": read.model_dump(mode="json")}
+    )
+    return read
 
 
 @router.patch(
@@ -154,44 +179,57 @@ async def update_incident(
     return _to_read(incident)
 
 
-@router.patch(
-    "/{incident_id}/status",
-    response_model=IncidentRead,
-    dependencies=[Depends(require_permission("incident.update"))],
-)
+@router.patch("/{incident_id}/status", response_model=IncidentRead)
 async def update_incident_status(
-    incident_id: uuid.UUID, payload: IncidentStatusUpdate, db: AsyncSession = Depends(get_db)
+    incident_id: uuid.UUID,
+    payload: IncidentStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_permission("incident.update")),
 ) -> IncidentRead:
     incident = await _load_or_404(db, incident_id)
     validate_transition(incident.status, payload.status)
+    previous_status = incident.status
     incident.status = payload.status
+    audit.record(
+        db,
+        actor=user.email,
+        action=f"INCIDENT_STATUS_CHANGED_{previous_status}_TO_{payload.status}",
+        target_resource=incident.incident_number,
+        department_code=incident.department_code or user.department,
+        reason=payload.reason,
+    )
     await db.commit()
     return _to_read(incident)
 
 
-@router.post(
-    "/{incident_id}/assign",
-    response_model=IncidentRead,
-    dependencies=[Depends(require_permission("incident.assign"))],
-)
+@router.post("/{incident_id}/assign", response_model=IncidentRead)
 async def assign_incident(
-    incident_id: uuid.UUID, payload: IncidentAssign, db: AsyncSession = Depends(get_db)
+    incident_id: uuid.UUID,
+    payload: IncidentAssign,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_permission("incident.assign")),
 ) -> IncidentRead:
     incident = await _load_or_404(db, incident_id)
     require_status(incident.status, "VERIFIED", "assign")
     incident.assigned_to = payload.assigned_to
     incident.status = "ASSIGNED"
+    audit.record(
+        db,
+        actor=user.email,
+        action=f"INCIDENT_ASSIGNED_TO_{payload.assigned_to}",
+        target_resource=incident.incident_number,
+        department_code=incident.department_code or user.department,
+        reason=payload.reason,
+    )
     await db.commit()
     return _to_read(incident)
 
 
-@router.post(
-    "/{incident_id}/resolve",
-    response_model=IncidentRead,
-    dependencies=[Depends(require_permission("incident.resolve"))],
-)
+@router.post("/{incident_id}/resolve", response_model=IncidentRead)
 async def resolve_incident(
-    incident_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+    incident_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(require_permission("incident.resolve")),
 ) -> IncidentRead:
     incident = await _load_or_404(db, incident_id)
     require_status(incident.status, "RESPONDING", "resolve")
@@ -202,6 +240,13 @@ async def resolve_incident(
     if created_at.tzinfo is None:
         created_at = created_at.replace(tzinfo=UTC)
     incident.response_time_seconds = int((now - created_at).total_seconds())
+    audit.record(
+        db,
+        actor=user.email,
+        action="INCIDENT_RESOLVED",
+        target_resource=incident.incident_number,
+        department_code=incident.department_code or user.department,
+    )
     await db.commit()
     return _to_read(incident)
 

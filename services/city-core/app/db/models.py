@@ -28,6 +28,15 @@ INCIDENT_SEVERITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
 # Lifecycle order from spec section 16. See app/services/incidents.py for
 # the allowed-transition map that enforces this at the API layer.
 INCIDENT_STATUSES = ("DETECTED", "VERIFIED", "ASSIGNED", "RESPONDING", "RESOLVED", "ANALYZED")
+WORKFLOW_PRIORITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
+# See app/services/workflows.py for the allowed-transition map this enforces.
+WORKFLOW_STATUSES = ("PENDING", "IN_PROGRESS", "ESCALATED", "COMPLETED", "REJECTED")
+ASSET_CONDITIONS = ("EXCELLENT", "GOOD", "FAIR", "POOR", "CRITICAL")
+PROJECT_STATUSES = ("PLANNED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELLED")
+NOTIFICATION_SEVERITIES = ("INFO", "WARNING", "CRITICAL")
+NOTIFICATION_CHANNELS = ("IN_APP", "EMAIL", "SMS", "PUSH")
+# See app/services/complaints.py for the allowed-transition map this enforces.
+COMPLAINT_STATUSES = ("SUBMITTED", "IN_REVIEW", "ASSIGNED", "RESOLVED", "REJECTED")
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -150,6 +159,11 @@ class Incident(Base):
     assigned_to: Mapped[str | None] = mapped_column(sa.String(150), nullable=True)
     response_time_seconds: Mapped[int | None] = mapped_column(sa.Integer(), nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    # Spec section 16 lists "Evidence" as an incident field. Same shape as
+    # CitizenComplaint.image_url -- a URL, not the image itself (Cloudinary
+    # or equivalent owns the actual file; this repo has no media upload
+    # pipeline yet, so providers/operators pass a URL directly for now).
+    image_url: Mapped[str | None] = mapped_column(sa.String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now()
     )
@@ -280,6 +294,15 @@ class InfrastructureAsset(Base):
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=_utcnow
     )
 
+    __table_args__ = (
+        sa.CheckConstraint(
+            f"condition IN {ASSET_CONDITIONS}", name="ck_infrastructure_assets_condition"
+        ),
+        sa.CheckConstraint(
+            f"risk_level IN {RISK_LEVELS}", name="ck_infrastructure_assets_risk_level"
+        ),
+    )
+
 
 class CityProject(Base):
     __tablename__ = "city_projects"
@@ -299,6 +322,10 @@ class CityProject(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        sa.CheckConstraint(f"status IN {PROJECT_STATUSES}", name="ck_city_projects_status"),
     )
 
 
@@ -325,6 +352,12 @@ class CitizenComplaint(Base):
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=_utcnow
     )
 
+    __table_args__ = (
+        sa.CheckConstraint(
+            f"status IN {COMPLAINT_STATUSES}", name="ck_citizen_complaints_status"
+        ),
+    )
+
 
 class WorkflowTask(Base):
     __tablename__ = "workflow_tasks"
@@ -342,6 +375,11 @@ class WorkflowTask(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        sa.CheckConstraint(f"priority IN {WORKFLOW_PRIORITIES}", name="ck_workflow_tasks_priority"),
+        sa.CheckConstraint(f"status IN {WORKFLOW_STATUSES}", name="ck_workflow_tasks_status"),
     )
 
 
@@ -372,6 +410,13 @@ class Notification(Base):
     is_read: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now()
+    )
+
+    __table_args__ = (
+        sa.CheckConstraint(
+            f"severity IN {NOTIFICATION_SEVERITIES}", name="ck_notifications_severity"
+        ),
+        sa.CheckConstraint(f"channel IN {NOTIFICATION_CHANNELS}", name="ck_notifications_channel"),
     )
 
 

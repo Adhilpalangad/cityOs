@@ -5,14 +5,20 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes_complaints import router as complaints_router
 from app.api.routes_extended import router as extended_router
 from app.api.routes_hospitals import router as hospitals_router
 from app.api.routes_incidents import router as incidents_router
+from app.api.routes_infrastructure import router as infrastructure_router
 from app.api.routes_live import router as live_router
 from app.api.routes_live import run_consumer
+from app.api.routes_notifications import router as notifications_router
+from app.api.routes_projects import router as projects_router
 from app.api.routes_roads import router as roads_router
+from app.api.routes_search import router as search_router
 from app.api.routes_system import router as system_router
 from app.api.routes_vehicles import router as vehicles_router
+from app.api.routes_workflows import router as workflows_router
 from app.core.config import get_settings
 from app.core.errors import install_exception_handlers
 from app.core.logging import configure_logging
@@ -53,5 +59,11 @@ app.include_router(roads_router)
 app.include_router(hospitals_router)
 app.include_router(vehicles_router)
 app.include_router(incidents_router)
+app.include_router(workflows_router)
+app.include_router(infrastructure_router)
+app.include_router(projects_router)
+app.include_router(notifications_router)
+app.include_router(search_router)
+app.include_router(complaints_router)
 app.include_router(extended_router)
 app.include_router(live_router)

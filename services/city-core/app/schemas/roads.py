@@ -46,6 +46,10 @@ class RoadUpdate(BaseModel):
     traffic_level: str | None = None
     risk_level: str | None = None
     waypoints: list[Waypoint] | None = None
+    # Not persisted on Road itself -- only used to annotate the audit log
+    # entry written when `status` changes (spec section 50's own example is
+    # literally a road closure with a reason).
+    reason: str | None = None
 
     @field_validator("status")
     @classmethod

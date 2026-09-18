@@ -1,12 +1,14 @@
-"""Turns data-provider events into Road/Vehicle upserts (Phase 3 live pipeline).
+"""Turns data-provider events into Road/Vehicle/Incident writes (Phase 3
+live pipeline).
 
 Consumed by app/api/routes_live.py's Kafka consumer background task. Each
-function takes an already-JSON-decoded event dict a provider published and
-either updates the matching row (matched by natural key -- Road.code /
-Vehicle.vehicle_id) or creates it on first sight. city-core's roads/vehicles
+function takes an already-JSON-decoded event dict a provider published.
+Road/Vehicle events upsert (matched by natural key -- Road.code /
+Vehicle.vehicle_id) or create on first sight; city-core's roads/vehicles
 tables have no separate seed data today, so the provider's registry becomes
-the live seed the first time this pipeline runs, the same way onboarding any
-new external data source would work.
+the live seed the first time this pipeline runs. Incident events are always
+new rows -- each one from data-providers/incidents represents a distinct
+detected event, not an update to an existing one.
 
 Like app/services/incidents.py, this module does not own the DB session --
 callers pass one in and are responsible for committing.
@@ -18,7 +20,17 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import RISK_LEVELS, TRAFFIC_LEVELS, VEHICLE_TYPES, Road, Vehicle
+from app.db.models import (
+    INCIDENT_SEVERITIES,
+    INCIDENT_TYPES,
+    RISK_LEVELS,
+    TRAFFIC_LEVELS,
+    VEHICLE_TYPES,
+    Incident,
+    Road,
+    Vehicle,
+)
+from app.services.incidents import generate_incident_number
 
 
 async def apply_traffic_event(db: AsyncSession, event: dict[str, Any]) -> Road:
@@ -66,3 +78,34 @@ async def apply_vehicle_event(db: AsyncSession, event: dict[str, Any]) -> Vehicl
     vehicle.heading_degrees = event.get("heading", vehicle.heading_degrees)
     vehicle.position_updated_at = datetime.now(UTC)
     return vehicle
+
+
+async def apply_incident_event(db: AsyncSession, event: dict[str, Any]) -> Incident:
+    """Create an Incident row from an `incident.events` message.
+
+    Expected shape (data-providers/incidents/main.py's `_generate_incident`):
+    incident_id, incident_type, severity, description, latitude, longitude,
+    image_url, timestamp. Always creates -- each message is a distinct
+    detected event, not an update to a prior one (matching how a real
+    accident-detection feed would work: every message is a new incident).
+    """
+    incident_type = event.get("incident_type")
+    if incident_type not in INCIDENT_TYPES:
+        incident_type = "PUBLIC_SAFETY"
+    severity = event.get("severity")
+    if severity not in INCIDENT_SEVERITIES:
+        severity = "MEDIUM"
+
+    incident = Incident(
+        incident_number=generate_incident_number(),
+        incident_type=incident_type,
+        severity=severity,
+        description=event.get("description"),
+        latitude=event.get("latitude"),
+        longitude=event.get("longitude"),
+        image_url=event.get("image_url"),
+        department_code="EMERGENCY",
+        status="DETECTED",
+    )
+    db.add(incident)
+    return incident

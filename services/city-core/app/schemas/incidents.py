@@ -21,6 +21,7 @@ class IncidentRead(BaseModel):
     assigned_to: str | None
     response_time_seconds: int | None
     resolved_at: datetime | None
+    image_url: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -39,6 +40,7 @@ class IncidentCreate(BaseModel):
     road_id: str | None = None
     reporter: str | None = None
     department_code: str | None = None
+    image_url: str | None = None
 
     @field_validator("incident_type")
     @classmethod
@@ -70,6 +72,7 @@ class IncidentUpdate(BaseModel):
 
 class IncidentStatusUpdate(BaseModel):
     status: str
+    reason: str | None = None
 
     @field_validator("status")
     @classmethod
@@ -81,3 +84,4 @@ class IncidentStatusUpdate(BaseModel):
 
 class IncidentAssign(BaseModel):
     assigned_to: str
+    reason: str | None = None

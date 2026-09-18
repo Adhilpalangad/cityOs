@@ -198,6 +198,17 @@ services:
     depends_on:
       redpanda: { condition: service_healthy }
 
+  incidents-provider:
+    profiles: ["apps"]
+    build:
+      context: .
+      dockerfile: data-providers/incidents/Dockerfile
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports: ["${INCIDENTS_PROVIDER_PORT:-8012}:8012"]
+    depends_on:
+      redpanda: { condition: service_healthy }
+
   web:
     profiles: ["apps"]
     build:

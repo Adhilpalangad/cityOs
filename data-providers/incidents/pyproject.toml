@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cityos-incident-provider"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["aiokafka>=0.12,<0.13", "fastapi>=0.115", "uvicorn[standard]>=0.34"]
+
+[tool.setuptools]
+py-modules = ["main"]
