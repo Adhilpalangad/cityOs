@@ -17,7 +17,17 @@ COPY --from=deps /workspace/node_modules ./node_modules
 COPY . .
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN npm run build:web
+# --webpack, not Turbopack (the project default): Turbopack has a known,
+# currently-unfixed bug where it silently ignores next.config.ts's
+# turbopack.root and misdetects the workspace root in exactly this
+# npm-workspace-from-the-repo-root invocation shape, so `next build` fails
+# with "Module not found: Can't resolve '@cityos/validation'" even though
+# the module is genuinely there and correctly linked (confirmed directly --
+# require.resolve() finds it fine; only Turbopack's bundler can't).
+# See https://github.com/vercel/next.js/issues/92540. `next dev`/`build`
+# outside Docker aren't affected -- only this exact invocation is -- so
+# only this build step is pinned to webpack, not local development.
+RUN npm run build:web -- --webpack
 
 FROM node:22-alpine AS runner
 WORKDIR /app
