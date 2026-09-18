@@ -101,17 +101,23 @@ function firstCenter(roads: Road[], hospitals: Hospital[]): [number, number] {
   return [75.7817, 11.2506]; // fallback: Kozhikode city centre (Mananchira)
 }
 
-export function CityMap({ roads: initialRoads, hospitals, vehicles: initialVehicles, incidents }: CityMapProps) {
+export function CityMap({ roads: initialRoads, hospitals, vehicles: initialVehicles, incidents: initialIncidents }: CityMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [styleLoaded, setStyleLoaded] = useState(false);
   const [selected, setSelected] = useState<Selected | null>(null);
   const [layers, setLayers] = useState({ roads: true, hospitals: true, vehicles: true, incidents: true });
 
-  const { roads: liveRoads, vehicles: liveVehicles, connected } = useLiveFeed();
+  const { roads: liveRoads, vehicles: liveVehicles, incidents: liveIncidents, connected } = useLiveFeed();
 
   const roads = mergeByKey(initialRoads, liveRoads, (r) => r.code);
   const vehicles = mergeByKey(initialVehicles, liveVehicles, (v) => v.vehicle_id);
+  // Incidents are never upserted -- every provider/API event is a genuinely
+  // new row (app/services/live_ingest.py's apply_incident_event always
+  // INSERTs). mergeByKey still does the right thing here: a live incident's
+  // id never matches one already in initialIncidents, so every live entry
+  // just appends rather than replacing anything.
+  const incidents = mergeByKey(initialIncidents, liveIncidents, (i) => i.id);
 
   // Latest data, readable from the one-time init effect below without
   // retriggering it (that effect must only run once -- creating a
@@ -201,6 +207,23 @@ export function CityMap({ roads: initialRoads, hospitals, vehicles: initialVehic
         type: "geojson",
         data: pointsToFeatures(latest.current.incidents, (i) => i.id),
       });
+      // Pulsing halo, drawn *under* the solid dot below: an expanding,
+      // fading ring so a new incident reads as "blinking" on the map,
+      // matching the ask ("small node is blinking in map"). Its radius/
+      // opacity are animated by the requestAnimationFrame loop further
+      // down -- MapLibre has no built-in pulse, so this drives the paint
+      // properties by hand every frame.
+      map.addLayer({
+        id: "incidents-pulse-layer",
+        type: "circle",
+        source: "incidents",
+        paint: {
+          "circle-radius": 8,
+          "circle-color": "#ef4444",
+          "circle-opacity": 0.5,
+          "circle-stroke-width": 0,
+        },
+      });
       map.addLayer({
         id: "incidents-layer",
         type: "circle",
@@ -213,7 +236,13 @@ export function CityMap({ roads: initialRoads, hospitals, vehicles: initialVehic
         },
       });
 
-      for (const layerId of ["roads-layer", "hospitals-layer", "vehicles-layer", "incidents-layer"]) {
+      for (const layerId of [
+        "roads-layer",
+        "hospitals-layer",
+        "vehicles-layer",
+        "incidents-pulse-layer",
+        "incidents-layer",
+      ]) {
         map.on("mouseenter", layerId, () => {
           map.getCanvas().style.cursor = "pointer";
         });
@@ -237,16 +266,41 @@ export function CityMap({ roads: initialRoads, hospitals, vehicles: initialVehic
         const vehicle = latest.current.vehicles.find((v) => v.vehicle_id === id);
         if (vehicle) setSelected({ kind: "vehicle", data: vehicle });
       });
-      map.on("click", "incidents-layer", (e: MapLayerMouseEvent) => {
+      const selectIncident = (e: MapLayerMouseEvent) => {
         const id = e.features?.[0]?.properties?._id as string | undefined;
         const incident = latest.current.incidents.find((i) => i.id === id);
         if (incident) setSelected({ kind: "incident", data: incident });
-      });
+      };
+      // Registered on both the solid dot and its pulsing halo -- the halo's
+      // radius grows past the dot's, so without this a click that lands in
+      // the pulse ring (rather than dead-center) would miss.
+      map.on("click", "incidents-layer", selectIncident);
+      map.on("click", "incidents-pulse-layer", selectIncident);
 
       setStyleLoaded(true);
     });
 
+    // Pulse animation: oscillate the halo layer's radius/opacity so new
+    // incidents read as "blinking" on the map rather than a static dot.
+    // Runs continuously for every incident marker (not just newly-arrived
+    // ones) -- simpler than tracking a "new since when" set per marker, and
+    // still satisfies the ask that a node visibly blinks.
+    let pulseFrame: number;
+    const pulseStart = performance.now();
+    function pulse(now: number) {
+      const map = mapRef.current;
+      if (map?.getLayer("incidents-pulse-layer")) {
+        const t = ((now - pulseStart) / 1000) % 1.4; // 1.4s cycle
+        const progress = t / 1.4;
+        map.setPaintProperty("incidents-pulse-layer", "circle-radius", 8 + progress * 16);
+        map.setPaintProperty("incidents-pulse-layer", "circle-opacity", 0.5 * (1 - progress));
+      }
+      pulseFrame = requestAnimationFrame(pulse);
+    }
+    pulseFrame = requestAnimationFrame(pulse);
+
     return () => {
+      cancelAnimationFrame(pulseFrame);
       map.remove();
       mapRef.current = null;
     };
@@ -294,6 +348,7 @@ export function CityMap({ roads: initialRoads, hospitals, vehicles: initialVehic
     map.setLayoutProperty("hospitals-layer", "visibility", visibility(layers.hospitals));
     map.setLayoutProperty("vehicles-layer", "visibility", visibility(layers.vehicles));
     map.setLayoutProperty("incidents-layer", "visibility", visibility(layers.incidents));
+    map.setLayoutProperty("incidents-pulse-layer", "visibility", visibility(layers.incidents));
   }, [layers, styleLoaded]);
 
   return (
@@ -410,7 +465,27 @@ function Inspector({ selected, onClose }: { selected: Selected; onClose: () => v
           <div className="text-[10px] space-y-1 text-ink-muted">
             <p>Severity: <strong>{selected.data.severity}</strong> · Status: <strong>{selected.data.status}</strong></p>
             <p className="line-clamp-2">{selected.data.description}</p>
+            <p>
+              Reported:{" "}
+              <strong>
+                {new Date(selected.data.created_at).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </strong>
+            </p>
           </div>
+          {selected.data.image_url && (
+            // Evidence photo (spec section 16) -- synthetic providers use
+            // picsum.photos placeholders (spec section 86: never pretend
+            // simulated data is real), a real operator upload would point
+            // here just the same.
+            <img
+              src={selected.data.image_url}
+              alt={`Evidence for ${selected.data.incident_number}`}
+              className="w-full rounded-lg border border-line/40 object-cover"
+            />
+          )}
         </>
       )}
     </div>

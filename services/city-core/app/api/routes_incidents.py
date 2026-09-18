@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_db, require_permission
+from app.api.routes_live import manager as live_manager
 from app.core.errors import AppError
 from app.db.models import Incident
 from app.schemas.common import PageMeta
@@ -41,6 +42,7 @@ def _to_read(incident: Incident) -> IncidentRead:
         assigned_to=incident.assigned_to,
         response_time_seconds=incident.response_time_seconds,
         resolved_at=incident.resolved_at,
+        image_url=incident.image_url,
         created_at=incident.created_at,
         updated_at=incident.updated_at,
     )
@@ -134,6 +136,7 @@ async def create_incident(
         road_id=road_uuid,
         reporter=payload.reporter,
         department_code=payload.department_code,
+        image_url=payload.image_url,
         status="DETECTED",
     )
     db.add(incident)
@@ -150,7 +153,15 @@ async def create_incident(
         )
 
     await db.commit()
-    return _to_read(incident)
+    read = _to_read(incident)
+    # Live map feed: any incident creation shows up immediately, whether it
+    # came from the synthetic data-providers/incidents provider (via Kafka
+    # -> app/services/live_ingest.py) or a real operator/API call like this
+    # one -- both paths broadcast over the same /ws/live connection.
+    await live_manager.broadcast(
+        {"type": "INCIDENT_UPDATE", "incident": read.model_dump(mode="json")}
+    )
+    return read
 
 
 @router.patch(

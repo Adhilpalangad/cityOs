@@ -7,8 +7,8 @@ route, so there's no HTTP layer to go through.
 
 from sqlalchemy import select
 
-from app.db.models import Road, Vehicle
-from app.services.live_ingest import apply_traffic_event, apply_vehicle_event
+from app.db.models import Incident, Road, Vehicle
+from app.services.live_ingest import apply_incident_event, apply_traffic_event, apply_vehicle_event
 
 TRAFFIC_EVENT = {
     "road_id": "ROAD-1024",
@@ -100,3 +100,52 @@ async def test_apply_vehicle_event_falls_back_to_fleet_for_unknown_type(db) -> N
     vehicle = await apply_vehicle_event(db, unknown_type)
     await db.commit()
     assert vehicle.vehicle_type == "fleet"
+
+
+INCIDENT_EVENT = {
+    "incident_id": "SYN-ABCD1234",
+    "incident_type": "ROAD_ACCIDENT",
+    "severity": "HIGH",
+    "description": "Multi-vehicle collision blocking traffic on Mavoor Road",
+    "latitude": 11.256,
+    "longitude": 75.787,
+    "image_url": "https://picsum.photos/seed/SYN-ABCD1234/600/400",
+    "timestamp": "2026-09-17T11:40:00Z",
+}
+
+
+async def test_apply_incident_event_creates_a_real_incident(db) -> None:
+    incident = await apply_incident_event(db, INCIDENT_EVENT)
+    await db.commit()
+
+    assert incident.incident_number.startswith("INC-")
+    assert incident.incident_type == "ROAD_ACCIDENT"
+    assert incident.severity == "HIGH"
+    assert incident.status == "DETECTED"
+    assert incident.image_url == INCIDENT_EVENT["image_url"]
+    assert incident.latitude == 11.256
+
+    stored = await db.scalar(
+        select(Incident).where(Incident.incident_number == incident.incident_number)
+    )
+    assert stored is not None
+
+
+async def test_apply_incident_event_always_creates_a_new_row(db) -> None:
+    # Unlike roads/vehicles, two incident events never collapse into one
+    # row -- each is a distinct detected event, even from the same provider
+    # "incident_id" (which city-core doesn't use as a natural key at all).
+    await apply_incident_event(db, INCIDENT_EVENT)
+    await apply_incident_event(db, INCIDENT_EVENT)
+    await db.commit()
+
+    all_incidents = (await db.scalars(select(Incident))).all()
+    assert len(all_incidents) == 2
+
+
+async def test_apply_incident_event_falls_back_on_unrecognized_type_and_severity(db) -> None:
+    bad = {**INCIDENT_EVENT, "incident_type": "ALIEN_INVASION", "severity": "APOCALYPTIC"}
+    incident = await apply_incident_event(db, bad)
+    await db.commit()
+    assert incident.incident_type == "PUBLIC_SAFETY"
+    assert incident.severity == "MEDIUM"

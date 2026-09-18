@@ -1,13 +1,13 @@
 """Live WebSocket feed + the Kafka consumer that feeds it (Phase 3).
 
-Bridges the two data providers (data-providers/traffic, data-providers/
-vehicles) to the rest of the platform: their events land on the
-`traffic.events` / `vehicle.events` Redpanda topics, get applied to
-Road/Vehicle rows by `app/services/live_ingest.py`, and are rebroadcast here
-over `/ws/live` so the browser sees updates without polling. api-gateway
-relays this endpoint through to the browser (see
-services/api-gateway/app/api/ws_proxy.py) rather than exposing city-core
-directly.
+Bridges the three data providers (data-providers/traffic, data-providers/
+vehicles, data-providers/incidents) to the rest of the platform: their
+events land on the `traffic.events` / `vehicle.events` / `incident.events`
+Redpanda topics, get applied to Road/Vehicle/Incident rows by
+`app/services/live_ingest.py`, and are rebroadcast here over `/ws/live` so
+the browser sees updates without polling. api-gateway relays this endpoint
+through to the browser (see services/api-gateway/app/api/ws_proxy.py)
+rather than exposing city-core directly.
 """
 
 import json
@@ -20,15 +20,17 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from app.core.config import get_settings
 from app.core.security import TokenError, decode_access_token
 from app.db.base import SessionLocal
-from app.db.models import Road, Vehicle
+from app.db.models import Incident, Road, Vehicle
+from app.schemas.incidents import IncidentRead
 from app.schemas.roads import RoadRead
 from app.schemas.vehicles import VehicleRead
-from app.services.live_ingest import apply_traffic_event, apply_vehicle_event
+from app.services.live_ingest import apply_incident_event, apply_traffic_event, apply_vehicle_event
+from app.services.notifications import notify
 
 router = APIRouter()
 logger = structlog.get_logger()
 
-_TOPICS = ("traffic.events", "vehicle.events")
+_TOPICS = ("traffic.events", "vehicle.events", "incident.events")
 
 
 def _road_to_read(road: Road) -> RoadRead:
@@ -62,6 +64,28 @@ def _vehicle_to_read(vehicle: Vehicle) -> VehicleRead:
         position_updated_at=vehicle.position_updated_at,
         created_at=vehicle.created_at,
         updated_at=vehicle.updated_at,
+    )
+
+
+def _incident_to_read(incident: Incident) -> IncidentRead:
+    return IncidentRead(
+        id=str(incident.id),
+        incident_number=incident.incident_number,
+        incident_type=incident.incident_type,
+        severity=incident.severity,
+        status=incident.status,
+        description=incident.description,
+        latitude=incident.latitude,
+        longitude=incident.longitude,
+        road_id=str(incident.road_id) if incident.road_id else None,
+        reporter=incident.reporter,
+        department_code=incident.department_code,
+        assigned_to=incident.assigned_to,
+        response_time_seconds=incident.response_time_seconds,
+        resolved_at=incident.resolved_at,
+        image_url=incident.image_url,
+        created_at=incident.created_at,
+        updated_at=incident.updated_at,
     )
 
 
@@ -134,6 +158,25 @@ async def _handle_message(topic: str, payload: bytes) -> None:
                 {
                     "type": "VEHICLE_UPDATE",
                     "vehicle": _vehicle_to_read(vehicle).model_dump(mode="json"),
+                }
+            )
+        elif topic == "incident.events":
+            incident = await apply_incident_event(db, event)
+            # Spec section 48's trigger rule applies here too, not just to
+            # incidents created through the REST API (routes_incidents.py).
+            if incident.severity == "CRITICAL":
+                notify(
+                    db,
+                    title=f"Critical incident: {incident.incident_number}",
+                    message=incident.description or f"{incident.incident_type} detected.",
+                    severity="CRITICAL",
+                    target_department=incident.department_code or "EMERGENCY",
+                )
+            await db.commit()
+            await manager.broadcast(
+                {
+                    "type": "INCIDENT_UPDATE",
+                    "incident": _incident_to_read(incident).model_dump(mode="json"),
                 }
             )
 

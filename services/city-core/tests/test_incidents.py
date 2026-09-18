@@ -19,6 +19,25 @@ def _create_incident(client) -> dict:
     return response.json()
 
 
+def test_create_incident_accepts_evidence_image_url(client) -> None:
+    response = client.post(
+        "/api/v1/incidents",
+        headers=auth_headers(ALL),
+        json={
+            "incident_type": "FIRE",
+            "severity": "HIGH",
+            "image_url": "https://picsum.photos/seed/test/600/400",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["image_url"] == "https://picsum.photos/seed/test/600/400"
+
+
+def test_create_incident_image_url_defaults_to_none(client) -> None:
+    incident = _create_incident(client)
+    assert incident["image_url"] is None
+
+
 def test_traffic_officer_can_create_and_read_but_not_update(client) -> None:
     created = client.post(
         "/api/v1/incidents",

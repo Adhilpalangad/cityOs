@@ -159,6 +159,11 @@ class Incident(Base):
     assigned_to: Mapped[str | None] = mapped_column(sa.String(150), nullable=True)
     response_time_seconds: Mapped[int | None] = mapped_column(sa.Integer(), nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    # Spec section 16 lists "Evidence" as an incident field. Same shape as
+    # CitizenComplaint.image_url -- a URL, not the image itself (Cloudinary
+    # or equivalent owns the actual file; this repo has no media upload
+    # pipeline yet, so providers/operators pass a URL directly for now).
+    image_url: Mapped[str | None] = mapped_column(sa.String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now()
     )

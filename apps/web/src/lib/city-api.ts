@@ -175,6 +175,7 @@ const MOCK_INCIDENTS: Incident[] = [
     latitude: 11.23,
     longitude: 75.84,
     department_code: "TRAFFIC",
+    image_url: "https://picsum.photos/seed/INC-2026-0891/600/400",
     created_at: new Date().toISOString(),
   },
   {
@@ -187,6 +188,7 @@ const MOCK_INCIDENTS: Incident[] = [
     latitude: 11.265,
     longitude: 75.795,
     department_code: "ENERGY",
+    image_url: null,
     created_at: new Date().toISOString(),
   },
   {
@@ -199,6 +201,7 @@ const MOCK_INCIDENTS: Incident[] = [
     latitude: 11.256,
     longitude: 75.783,
     department_code: "WATER",
+    image_url: null,
     created_at: new Date().toISOString(),
   },
 ];
@@ -620,6 +623,7 @@ export interface Incident {
   latitude: number | null;
   longitude: number | null;
   department_code: string | null;
+  image_url: string | null;
   created_at: string;
 }
 
